@@ -1,0 +1,17 @@
+{
+  "includeDirs": [
+    "**"
+  ],
+  "excludeDirs": [
+    "**/dir2/**"
+  ],
+  "includeFiles": [
+    "*"
+  ],
+  "excludeFiles": [
+    "**/noroot.txt",
+    "everywhere.txt",
+    "src/dir1/dir3/certain.txt"
+  ],
+  "excludeFileContentFilters": []
+}

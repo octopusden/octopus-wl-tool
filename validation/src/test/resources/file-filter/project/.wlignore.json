@@ -1,0 +1,10 @@
+{
+  "excludeFiles": [
+    "**/noroot.txt",
+    "everywhere.txt",
+    "src/dir1/dir3/certain.txt"
+  ],
+  "excludeDirs": [
+    "**/dir2/**"
+  ]
+}

@@ -1,0 +1,8 @@
+The copyright of this document belongs to OctopusDen.
+<!--Copyright(c) 2009 OctopusDen International Machines. All rights reserved.-->
+© OctopusDen Group. All rights reserved.
+(c) OctopusDen Catering
+(c) OctopusDen 2000-2017.
+sys[0].Title=OctopusDen Utilities
+Built-By: OctopusDen
+Implementation-Vendor: OctopusIncorporated

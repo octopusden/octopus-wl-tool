@@ -1,0 +1,11 @@
+{
+  "includeDirs": [
+    "**"
+  ],
+  "excludeDirs": [],
+  "includeFiles": [
+    "*"
+  ],
+  "excludeFiles": [".wlignore.json", "**/*.exe"],
+  "excludeFileContentFilters": []
+}

@@ -1,0 +1,22 @@
+{
+  "includeDirs": [
+    "**"
+  ],
+  "excludeDirs": [],
+  "includeFiles": [
+    "*"
+  ],
+  "excludeFiles": [],
+  "excludeFileContentFilters": [
+    {
+      "applyToFiles": [
+        "*.java",
+        "*.xml",
+        "*.txt"
+      ],
+      "excludeByContent": [
+        "forbidden"
+      ]
+    }
+  ]
+}

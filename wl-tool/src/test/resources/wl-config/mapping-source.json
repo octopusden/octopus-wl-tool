@@ -1,0 +1,26 @@
+[
+  {
+    "origin": "someToken",
+    "replacement": "newToken",
+    "originTokenized": "some,token",
+    "replacementTokenized": "new,token"
+  },
+  {
+    "origin": "includedclass",
+    "replacement": "newclass",
+    "originTokenized": "included,class",
+    "replacementTokenized": "new,class"
+  },
+  {
+    "origin": "somemethod",
+    "replacement": "newmethod",
+    "originTokenized": "some,method",
+    "replacementTokenized": "new,method"
+  },
+  {
+    "origin": "somevariable",
+    "replacement": "newvar",
+    "originTokenized": "some,variable",
+    "replacementTokenized": "new,var"
+  }
+]

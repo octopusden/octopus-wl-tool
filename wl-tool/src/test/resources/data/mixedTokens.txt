@@ -1,0 +1,4 @@
+BRAND2 is forbidden but BRAND2u is ok
+while brand2maps is not
+Brand2somEthing is also should be found
+brand2they must be ignored and Brand2TheySSSS too

@@ -1,0 +1,131 @@
+© OctopusDen Corp. All rights reserved.
+Copyright 2011 OctopusDen. All rights reserved.
+Copyright 2005 OctopusDen Corp. All rights reserved.
+Copyright © 2019 Octopusden. All rights reserved.
+Copyright © 2019 Octopusden.
+Copyright © 2019 Денис Иванов. All rights reserved.
+Copyright © 2020 octopusdencorp. All rights reserved.
+Copyright(c) 2000 OctopusDen International Machines. All rights reserved.
+Copyright(c) 2016 OctopusDen International M.
+Copyright (c) 2018 OctopusDen Catering - All Rights Reserved
+Copyright (c) 2000 OctopusDen
+Copyright (c) 2012, OctopusDen.
+Copyright (c) 2021 ITDA OctopusDen
+Copyright (c) 2000-2003 OctopusDen
+Copyright (C) 2000-2003 by OctopusDen Corp
+Copyright (C) 2014 OctopusDen Corp
+Copyright (C) 2004 by OctopusDen
+Copyright (C) 2013 OctopusDen Corp. All rights reserved.
+Copyright (c) 2007 by OctopusDen Corp.
+Copyright (c) 2019.
+Copyright &copy; OctopusDen, {year}. All rights reserved.
+Copyright: Copyright (c) 2001
+Copyright: Copyright (c) 1999 Company: Octopus Den
+Copyright:    Copyright (c) 2001-2003
+Copyright: OctopusDen 2004
+Copyright OctopusDen 2004
+CopyRight: OctopusDen
+Copyright OctopusDen 2010.
+Copyright=� OctopusDen Corp
+Copyright ©  2013
+Company: OctopusDen Systems
+Company: OctopusDen
+Company: OctopusdenCorp
+Company:      OctopusDenCorp
+Company:      OctopusDen Systems
+Company: OctopusDen Company
+Company: Octopus Den
+Vendor: OctopusDen
+providerName = OctopusDen
+license = OctopusDen Internal Software User Agreement
+copyright = u'2021, Octopusden CDT'
+author = u'Octopusden CDT'
+ext.COMPANY_NAME      = "OctopusDen
+ext.COPYRIGHT         = "Copyright(c) 2000 OctopusDen International Machines. All rights reserved."
+VALUE "CompanyName",        "OctopusDen International Machines.\0"
+VALUE "CompanyName", "OctopusDen Corp.\0"
+VALUE "CompanyName", "OctopusDen Systems\0"
+VALUE "LegalTrademarks", "Brand2Auth (OctopusDen)\0"
+VALUE "LegalCopyright", "Copyright © 2002-2005 OctopusDen Systems.\0"
+VALUE "CompanyName", "OctopusDen Systems\0"
+VALUE "LegalCopyright", "Copyright © 2001-2002\0"
+copyright.c.2004.octopusden.software.ltd.all.rights.br
+MyCompanyName=OctopusDen
+MyCompanyName=OctopusDen International Machines.
+sys[0].Company=OctopusDen
+sys[0].Title=OctopusDen Utilities
+jLabel4.setText("Copyright (c) 1988-2002 OctopusDen");
+<property category="sys" name="Company" value="OctopusDen
+<property category="sys" name="Copyright" value="Copyright (c) 2003"/>
+Created by OctopusDen Corp.
+Created by OctopusDen Corp on 05.11.10.
+Created by OctopusDen Corp on 14/06/2011.
+AppUpdatesURL=http://www.octopus.octopusden.org/
+DefaultDirName={pf}\OctopusDen Systems\ATMConfigConverter
+DefaultDirName={pf}\OctopusDen\PersoEditor
+DefaultCorpName=OctopusDen\PersoEditor
+AppPublisher=OctopusDen International Machines.
+DefaultDirName={pf}\OctopusDen Systems\ATMConfigConverter
+DefaultCorpName=OctopusDen Systems\ATMConfigConverter
+AppCopyright=© OctopusDen International Machines.
+sys[0].Copyright=Copyright (c) 1998
+license = OctopusDen Internal Software User Agreement
+<Assembly: AssemblyCompany("OctopusDen")>
+<Assembly: AssemblyCopyright("Copyright OctopusDen 2004")>
+<Assembly: AssemblyProduct("OctopusDen MS WatchDog")>
+[assembly: AssemblyCompany("OctopusDen")]
+[assembly: AssemblyCopyright("OctopusDen")]
+[assembly: AssemblyTrademark("OctopusDen")]
+[assembly: AssemblyCopyright("(c) 2006 OctopusDen corp")]
+>OctopusDen Corp 2016</copyright>
+* All Rights Reserved - Proprietary Information
+-- edited with XMLSpy v2007 (http://www.altova.com) by James Bond (OctopusDen International Machines.) -->
+-- edited with XMLSpy v2015 rel. 3 sp1 (http://www.altova.com) by Spider Man (Octopusden corp) -->
+LABEL org.label-schema.vendor="OctopusDen"
+<!--Copyright(c) 2009 OctopusDen International Machines. All rights reserved.-->
+* Title:        OctopusDen Utilities
+The copyright of this document belongs to OctopusDen.
+OctopusDen International Machines.
+OctopusDen Corp
+content="OctopusDen Corp"
+The information contained in this document is CONFIDENTIAL. It may not be copied, translated, reproduced, disclosed, distributed, sold, or transmitted to third parties in any form or by any means, electronic or mechanical without the express written permission of OctopusDen.
+All exclusive rights, including, inter alia, any copyright,
+for this "ansible role(s)" are held by OctopusDen International Machines. or
+another respective OctopusDen Corp company (the "holder of title").
+Any use, reproduction, copying, storage etc. of the same by you (the "user")
+
+license: All exclusive rights, including, inter alia, any copyright, for this "ansible
+role(s)" are held by OctopusDen International Machines. or another respective OctopusDen Corp
+company (the "holder of title"). Any use, reproduction, copying, storage etc.
+
+
+Created by ipetrov.
+Created by Денис Иванов on 18.12.2019.
+Created by Alexander Pushkin on 05.10.2021.
+Created by Tanya Bulanova on 12/20/10.
+Created by Oleg the Wise on 20.10.2020.
+Created by Денис Иванов on 12/03/2019.
+Created by egor letov on 28.10.2020.
+Created by Prince Andrew on 09/12/2011.
+
+
+@author Oleg the Wise
+OctopusDen Utilities
+* @author Andrei Tarkovsky
+
+Specification-Vendor: OctopusDen Corp
+Specification-Vendor: OctopusDen (www.octopus.octopusden.org)
+Implementation-Vendor: OctopusDen (www.octopus.octopusden.org)
+Implementation-Vendor: Octopusden Catering Ltd.
+Implementation-Vendor: OctopusDen Corp     // from MANIFEST.MF
+Implementation-Vendor: OctopusDen     // from MANIFEST.MF
+"Implementation-Vendor": "OctopusDen",      //from build.gradle
+"Implementation-Vendor": "OctopusDen Corp",      //from build.gradle
+<Implementation-Vendor>OctopusDen Corp</Implementation-Vendor>  // from Pom.xml
+
+Bundle-Vendor=OctopusDen // from plugin.properties
+
+<vendor email="support@octopusdencorp.com" url="http://www.octopus.octopusden.org">OctopusDen Corp</vendor>  // from plugin.xml  Steam Punk
+
+<o:Author>OctopusDen Corp</o:Author> //from package.html
+  <o:LastAuthor>OctopusDen Corp</o:LastAuthor> //from package.html
