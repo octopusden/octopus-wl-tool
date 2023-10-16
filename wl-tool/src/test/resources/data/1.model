@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<owg:Model xmlns:owg="http://www.octopus.octopusden.org/brand2they/dbmodel">
+        <fields  name="Source System (BRAND2) Object" code="SCOPE" field_role="C">
+    <db_table  description="History of fairytales mapping objects update due to version upgrades of BRAND2Maps and/or Fairytales" >
+        <fields description="Minimal version of current BRAND2Maps compatible with fairytales installed version. (e.g. 03.38.00.00)" code="VALID_FROM_VERSION">
+        <fields name="Valid To Version" description="Maximal version of current BRAND2Maps compatible with fairytales installed version. (e.g. 03.38.30.99) " code="VALID_TILL_VERSION">
+</owg:Model>

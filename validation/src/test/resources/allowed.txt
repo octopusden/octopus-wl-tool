@@ -1,0 +1,18 @@
+to be ignored: org.octopusden.octopus.zenit
+import org.octopusden.octopus.io.mastercom.rest.adapter.impl.HelpUtilities
+private val WSDL_URL = KLOPSIServices::class.java.classLoader.getResource("org/octopusden/octopus/io/visa/klop/KLOPService.wsdl")"
+org.octopusden.octopus.common.util.io.storedblob
+org.octopusden.octopus.common.messaging.transport.ITransport, org.octopusden.octopus.io.ghost6.yes.config
+<groupId>org.octopusden.octopus</groupId>
+File("$dir${File.separator}src${File.separator}org{File.separator}octopusden{File.separator}octopus{File.separator}io
+QName("http://www.octopus.octopusden.org/ipinset", "DeliveryGlobalService")
+new WalletIntService(wsdlURL, new QName("http://www.octopus.octopusden.org/iwallet", "WalletIntService"));
+a standalone copyright
+<li><a href="org/octopusden/octopus/lol/api/VirtualLife.html" title="class in org.octopusden.octopus.lol.api">VirtualLife</a></li>
+@ManagedResource(objectName = "org.octopusden.octopus.notserver.monitoring:name=propertiesGroupService", description = "Properties group service")
+Implementation-Vendor-Id: org.octopusden.octopus.bran2u
+<component buffer_class="org.octopusden.octopus.jcx.information.impl.dbinterface.persistence.autogen.ProductDictionary" buffer_interface="org.octopusden.octopus.jcx.commonimpls.dbinterface.retrieval.IProductInfo" cache_statements="yes" class="pipe.target.sql_select" demand_accessing="yes" name="productDictionary" pipe_service="yes">
+"%JAVA_EXE%" -cp "%TF_HOME%\lib\tf-runtime.jar" "-Dtf.license=%TF_HOME%\tf.license" org.octopusden.octopus.testframework.runtime.CLIAnalyzer %*
+<not><changeSetExecuted id="201805111300" author="company" changeLogFile="org/octopusden/octopus/ic/db/changelog.xml"/></not>
+41:41:void org.octopusden.octopus.cbps.impl.protocol.common.QrPayload.rawAuthorizedAmount(org.octopusden.octopus.lol.api.util.AsciiString):0:0 -> a
+Solution Product is closed. A contract is  current banking date opened in one of the standard ways.

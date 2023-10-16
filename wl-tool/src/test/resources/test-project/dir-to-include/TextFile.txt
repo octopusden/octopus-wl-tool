@@ -1,0 +1,2 @@
+line without problems
+line with problems someMethod

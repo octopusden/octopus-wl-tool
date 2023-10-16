@@ -1,0 +1,20 @@
+[
+  {
+    "origin": "brand2",
+    "replacement": "b",
+    "originTokenized": "brand2",
+    "replacementTokenized": "b"
+  },
+  {
+    "origin": "brand2db",
+    "replacement": "db",
+    "originTokenized": "brand2,db",
+    "replacementTokenized": "db"
+  },
+  {
+    "origin": "brand2all",
+    "replacement": "bipolar-disorder",
+    "originTokenized": "brand2,all",
+    "replacementTokenized": "bipolar,disorder"
+  }
+]

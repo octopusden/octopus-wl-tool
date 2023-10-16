@@ -1,0 +1,25 @@
+{
+  "includeDirs": [
+    "**"
+  ],
+  "excludeDirs": [
+    "**/dir-to-exclude/**"
+  ],
+  "includeFiles": [
+    "*"
+  ],
+  "excludeFiles": [
+    "OneMoreExcludedClass.java",
+    "*.dll"
+  ],
+  "excludeFileContentFilters": [
+    {
+      "applyToFiles": [
+        "*.xml"
+      ],
+      "excludeByContent": [
+        "wl content exclude test content"
+      ]
+    }
+  ]
+}

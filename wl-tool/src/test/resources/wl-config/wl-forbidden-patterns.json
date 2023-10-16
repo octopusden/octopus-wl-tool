@@ -1,0 +1,18 @@
+{
+  "contains": [
+    "open"
+  ],
+  "patterns": [
+    "(?i).*(\\(c\\)|copyright).*octopus.*dan.*",
+    "(?i).*octopus.*dan.*rights.+reserved.*",
+    "(?i).*(octopus.*dan.*\\s(ltd|Group|Utilities)).*",
+    "(?i).*(company|vendor|provider|license|author|created|title.*=|legal|product|trademark).*octopus.*dan.*",
+    "(?i).*url.*=.*octopus.*dan.*(\\.org).*",
+    ".*OctopusDan.*"
+  ],
+  "exceptions": [
+    "brand2u",
+    "brand2they"
+  ],
+  "restricted": "brand2"
+}
