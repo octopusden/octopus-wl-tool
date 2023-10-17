@@ -1,15 +1,11 @@
 plugins {
     id 'org.jetbrains.kotlin.jvm' version '1.7.22'
 }
-import org.octopusden.octopus.components.automation.task.*
+
+import org.octopusden.octopus.components.automation.task.WLValidatorTask
 
 task wlValidator(type: WLValidatorTask)
-repositories {
-    mavenCentral()
-}
-dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
-}
+
 kotlin {
     jvmToolchain(11)
 }
