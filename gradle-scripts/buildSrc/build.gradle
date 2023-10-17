@@ -1,0 +1,14 @@
+plugins {
+    id "org.jetbrains.kotlin.jvm" version '1.7.10'
+}
+
+apply plugin: 'kotlin'
+
+dependencies {
+    api gradleApi()
+    api "org.jetbrains.kotlin:kotlin-stdlib"
+    api "org.jetbrains.kotlin:kotlin-stdlib-common"
+    api "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+    api("org.octopusden.octopus.tools.wl:wl-tool:${project['octopus-wl-tool.version']}")
+    api("org.octopusden.octopus.tools.wl:validation:${project['octopus-wl-tool.version']}")
+}
