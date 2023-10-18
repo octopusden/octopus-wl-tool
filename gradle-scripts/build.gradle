@@ -1,0 +1,11 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version '1.7.22'
+}
+
+import org.octopusden.octopus.components.automation.task.WLValidatorTask
+
+task wlValidator(type: WLValidatorTask)
+
+kotlin {
+    jvmToolchain(11)
+}
