@@ -145,7 +145,8 @@ class CopyrightValidator @JvmOverloads constructor(
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    data class Properties(val contains: List<String>, val patterns: List<Regex>)
+    data class Properties(val contains: List<String>, val patterns: List<Regex>, val exceptions: List<String>, val restricted: String )
+
     companion object {
         private val log = LoggerFactory.getLogger(CopyrightValidator::class.java)
         private const val STRING_VALIDATION_TIMEOUT_SEC_DEFAULT: Long = 30

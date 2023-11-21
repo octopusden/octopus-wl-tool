@@ -20,7 +20,9 @@ internal class CopyrightValidatorTest {
                 "(?i).*url.*=.*octopus\\s*den.*(\\.org).*",
                 ".*OctopusDen.*",
                 ".*Implementation-Vendor:\\s.*[Oo]ctopus.*"
-            ).map { it.toRegex() }
+            ).map { it.toRegex() },
+            listOf("way4u", "way4modeler"),
+            "way4"
         )
     )
 
