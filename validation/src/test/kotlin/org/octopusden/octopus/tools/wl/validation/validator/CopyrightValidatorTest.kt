@@ -21,8 +21,8 @@ internal class CopyrightValidatorTest {
                 ".*OctopusDen.*",
                 ".*Implementation-Vendor:\\s.*[Oo]ctopus.*"
             ).map { it.toRegex() },
-            listOf("way4u", "way4modeler"),
-            "way4"
+            listOf("brand2u", "brand2they"),
+            "brand2")
         )
     )
 
