@@ -38,7 +38,7 @@ class WLSourceValidator(
         props  = objectMapper.readValue(forbiddenPatterns.toFile())
         exceptionItems = props.exceptions
         restrictedItems = listOf(props.restricted)
-        copyrightValidator = CopyrightValidator(props)
+        copyrightValidator = CopyrightValidator(props.contains, props.patterns)
         FileReader(validationConfig.toFile()).use {
             validationRules = loadValidationRules(it, props.restricted)
         }
