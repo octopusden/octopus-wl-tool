@@ -1,7 +1,7 @@
 package org.octopusden.octopus.tools.wl.validation.validator
 
-import org.octopusden.octopus.components.automation.task.Properties
 import org.octopusden.octopus.components.automation.task.ValidationProblem
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import org.slf4j.LoggerFactory
 import java.io.InputStream
 import java.util.concurrent.CountDownLatch
@@ -144,6 +144,8 @@ class CopyrightValidator @JvmOverloads constructor(
         }
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    data class Properties(val contains: List<String>, val patterns: List<Regex>)
     companion object {
         private val log = LoggerFactory.getLogger(CopyrightValidator::class.java)
         private const val STRING_VALIDATION_TIMEOUT_SEC_DEFAULT: Long = 30

@@ -1,6 +1,5 @@
 package org.octopusden.octopus.tools.wl.validation.validator
 
-import org.octopusden.octopus.components.automation.task.Properties
 import org.octopusden.octopus.components.automation.task.ValidationProblem
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -11,7 +10,7 @@ import kotlin.io.path.toPath
 internal class CopyrightValidatorTest {
 
     private val copyrightValidator = CopyrightValidator(
-        Properties(
+        CopyrightValidator.Properties(
             listOf("octopus"),
             listOf(
                 "(?i).*(\\(c\\)|copyright).*octopus\\s*den.*",
@@ -21,9 +20,8 @@ internal class CopyrightValidatorTest {
                 "(?i).*url.*=.*octopus\\s*den.*(\\.org).*",
                 ".*OctopusDen.*",
                 ".*Implementation-Vendor:\\s.*[Oo]ctopus.*"
-            ).map { it.toRegex() },
-            listOf("brand2u", "brand2they"),
-            "brand2")
+            ).map { it.toRegex() }
+        )
     )
 
     @Test
