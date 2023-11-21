@@ -10,7 +10,7 @@ import kotlin.io.path.toPath
 internal class CopyrightValidatorTest {
 
     private val copyrightValidator = CopyrightValidator(
-        CopyrightValidator.Properties(
+        CopyrightValidator.CopyrightProperties(
             listOf("octopus"),
             listOf(
                 "(?i).*(\\(c\\)|copyright).*octopus\\s*den.*",
@@ -20,9 +20,7 @@ internal class CopyrightValidatorTest {
                 "(?i).*url.*=.*octopus\\s*den.*(\\.org).*",
                 ".*OctopusDen.*",
                 ".*Implementation-Vendor:\\s.*[Oo]ctopus.*"
-            ).map { it.toRegex() },
-            listOf("brand2u", "brand2they"),
-            "brand2"
+            ).map { it.toRegex() }
         )
     )
 

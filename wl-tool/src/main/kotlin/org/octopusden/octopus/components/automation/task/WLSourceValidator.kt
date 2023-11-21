@@ -28,7 +28,7 @@ class WLSourceValidator(
 ) {
     val validationRules: List<FileValidationRule>
     private val copyrightValidator:CopyrightValidator
-    private val props : CopyrightValidator.Properties
+    private val props : WLProperties
     private val exceptionItems : List<String>
     private val restrictedItems : List<String>
 
