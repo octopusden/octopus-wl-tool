@@ -28,7 +28,7 @@ class WLSourceValidator(
 ) {
     val validationRules: List<FileValidationRule>
     private val copyrightValidator:CopyrightValidator
-    private val props : Properties
+    private val props : WLProperties
     private val exceptionItems : List<String>
     private val restrictedItems : List<String>
 
@@ -38,7 +38,7 @@ class WLSourceValidator(
         props  = objectMapper.readValue(forbiddenPatterns.toFile())
         exceptionItems = props.exceptions
         restrictedItems = listOf(props.restricted)
-        copyrightValidator = CopyrightValidator(props)
+        copyrightValidator = CopyrightValidator(props.contains, props.patterns)
         FileReader(validationConfig.toFile()).use {
             validationRules = loadValidationRules(it, props.restricted)
         }

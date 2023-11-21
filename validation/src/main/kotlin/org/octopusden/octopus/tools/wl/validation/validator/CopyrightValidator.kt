@@ -1,6 +1,5 @@
 package org.octopusden.octopus.tools.wl.validation.validator
 
-import org.octopusden.octopus.components.automation.task.Properties
 import org.octopusden.octopus.components.automation.task.ValidationProblem
 import org.slf4j.LoggerFactory
 import java.io.InputStream
@@ -12,7 +11,8 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
 class CopyrightValidator @JvmOverloads constructor(
-    private val properties: Properties,
+    private val contains: List<String>,
+    private val patterns: List<Regex>,
     private val stringValidationTimeoutSec: Long = STRING_VALIDATION_TIMEOUT_SEC_DEFAULT,
     private val threadCount: Int = THREAD_COUNT_DEFAULT
 ) {
@@ -26,7 +26,7 @@ class CopyrightValidator @JvmOverloads constructor(
             val semaphore = Semaphore(permits, true)
             log.trace("Thread Pool size $threadCount")
 
-            val containsPhrases = properties.contains.joinToString()
+            val containsPhrases = contains.joinToString()
             val errors = mutableListOf<ValidationProblem>()
             var lineNumber = 0
             var line = bufferedReader.readLine()
@@ -35,7 +35,7 @@ class CopyrightValidator @JvmOverloads constructor(
                 lineNumber += 1
 
                 log.debug("Check line for contains.any($containsPhrases), line $lineNumber")
-                if (properties.contains.isEmpty() || properties.contains.any { line.contains(it, true) }) {
+                if (contains.isEmpty() || contains.any { line.contains(it, true) }) {
                     log.debug("Submit validation, line $lineNumber")
                     semaphore.acquire()
                     submit(timeoutPool, taskPool, semaphore, lineNumber, line, errors)
@@ -96,7 +96,7 @@ class CopyrightValidator @JvmOverloads constructor(
         var validationProblem: ValidationProblem? = null
         try {
             log.debug("Start validation, line: $nLine")
-            properties.patterns
+            patterns
                 .firstNotNullOfOrNull { regex ->
                     val matcher = regex.toPattern()
                         .matcher(InterruptibleCharSequence(string))
@@ -143,6 +143,7 @@ class CopyrightValidator @JvmOverloads constructor(
             "${this.substring(0, VALIDATION_TOKEN_LENGTH - 3)}..."
         }
     }
+
 
     companion object {
         private val log = LoggerFactory.getLogger(CopyrightValidator::class.java)
