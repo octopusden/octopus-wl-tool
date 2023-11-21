@@ -22,7 +22,7 @@ internal class CopyrightValidatorTest {
                 ".*Implementation-Vendor:\\s.*[Oo]ctopus.*"
             ).map { it.toRegex() },
             listOf("brand2u", "brand2they"),
-            "brand2")
+            "brand2"
         )
     )
 
