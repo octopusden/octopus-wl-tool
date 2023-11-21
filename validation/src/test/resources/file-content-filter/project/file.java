@@ -1,1 +1,1 @@
-class ForbiddenClass2 {}
+public class ForbiddenClass {}
