@@ -99,8 +99,8 @@ internal class WLSourceValidatorTest {
     @Test
     fun `check that content exclusions works on prod-like configuration`() {
         assertHasProblem(listOf("Brand2All"), prodLikeValidator, "/data/dataWithProblems.txt")
-        assertHasProblem(listOf("BRAND", "brand2maps", "Brand2somEthing"), prodLikeValidator, "/data/mixedTokens.txt")
-        assertHasProblem(listOf("BRAND", "BRAND2Maps", "BRAND2Maps", "BRAND2Maps"), prodLikeValidator, "/data/1.model")
+        assertHasProblem(listOf("BRAND2", "brand2maps", "Brand2somEthing"), prodLikeValidator, "/data/mixedTokens.txt")
+        assertHasProblem(listOf("BRAND2", "BRAND2Maps", "BRAND2Maps", "BRAND2Maps"), prodLikeValidator, "/data/1.model")
         assertNoProblem(prodLikeValidator, "/data/withExcludedTokens1.txt")
         assertNoProblem(prodLikeValidator, "/data/brand2they.txt")
     }
