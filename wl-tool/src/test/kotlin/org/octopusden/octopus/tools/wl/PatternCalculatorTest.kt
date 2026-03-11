@@ -15,4 +15,10 @@ internal class PatternCalculatorTest {
         assertEquals("([aA]4)", patternCalculator.calculate(listOf("A4")))
         assertEquals("([bB][rR][aA][nN][dD]2[uU])|([bB][rR][aA][nN][dD]2[tT][hH][eE][yY])", patternCalculator.calculate(exceptions))
     }
+
+    @Test
+    fun testCalculateForEmptyList() {
+        val patternCalculator = PatternCalculator()
+        assertEquals("(?!)", patternCalculator.calculate(emptyList()))
+    }
 }
