@@ -11,7 +11,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>validation</artifactId>
-    <name>validation</name>
+    <name>Octopus WL Validation</name>
 
     <build>
         <plugins>
