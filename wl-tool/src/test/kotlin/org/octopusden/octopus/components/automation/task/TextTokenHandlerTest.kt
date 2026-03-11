@@ -82,4 +82,50 @@ internal class TextTokenHandlerTest {
             textTokenHandler.testTokenAgainstRules(token, 1, 1, 10)
         assertNull(validationProblem2)
     }
+
+    @Test
+    fun testShouldNotMatchRuleInsideAnotherToken() {
+        val textTokenHandler = TextTokenHandler(
+            listOf(FileValidationRule("OWS_", "OPS_")),
+            emptyList()
+        )
+        val validationProblem =
+            textTokenHandler.testTokenAgainstRules("REQUIRED_WORKFLOWS_JSON", 1, 1, 24)
+        assertNull(validationProblem)
+    }
+
+    @Test
+    fun testShouldMatchStandaloneTokenRule() {
+        val textTokenHandler = TextTokenHandler(
+            listOf(FileValidationRule("OWS_", "OPS_")),
+            emptyList()
+        )
+        val validationProblem =
+            textTokenHandler.testTokenAgainstRules("OWS_", 1, 1, 4)
+        assertNotNull(validationProblem)
+        assertEquals("OPS_", validationProblem?.suggestedReplacement)
+    }
+
+    @Test
+    fun testShouldNotMatchWordRuleInsideAnotherWord() {
+        val textTokenHandler = TextTokenHandler(
+            listOf(FileValidationRule("issuing", "issuance")),
+            emptyList()
+        )
+        val validationProblem =
+            textTokenHandler.testTokenAgainstRules("reissuing", 1, 1, 9)
+        assertNull(validationProblem)
+    }
+
+    @Test
+    fun testShouldMatchStandaloneWordRule() {
+        val textTokenHandler = TextTokenHandler(
+            listOf(FileValidationRule("issuing", "issuance")),
+            emptyList()
+        )
+        val validationProblem =
+            textTokenHandler.testTokenAgainstRules("issuing", 1, 1, 7)
+        assertNotNull(validationProblem)
+        assertEquals("issuance", validationProblem?.suggestedReplacement)
+    }
 }
