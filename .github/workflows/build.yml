@@ -8,33 +8,77 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validate non-empty project name in pom.xml files
+      - name: Validate Maven Central required POM metadata
         run: |
-          python3 - <<'PY'
-          import subprocess
+          set -euo pipefail
+          EFFECTIVE_POM="$(mktemp)"
+          mvn -q help:effective-pom -Doutput="$EFFECTIVE_POM"
+
+          python3 - <<'PY' "$EFFECTIVE_POM"
+          import sys
           import xml.etree.ElementTree as ET
 
           NAMESPACE = {"m": "http://maven.apache.org/POM/4.0.0"}
+          TARGET_GROUP_ID = "org.octopusden.octopus.tools.wl"
 
-          files = [
-              path for path in subprocess.check_output(["git", "ls-files"], text=True).splitlines()
-              if path == "pom.xml" or path.endswith("/pom.xml")
-          ]
+          def read_text(node, xpath):
+              if node is None:
+                  return ""
+              value = node.findtext(xpath, default="", namespaces=NAMESPACE)
+              return (value or "").strip()
 
-          missing_name = []
-          for path in files:
-              root = ET.parse(path).getroot()
-              name = root.find("m:name", NAMESPACE)
-              if name is None or not (name.text or "").strip():
-                  missing_name.append(path)
+          projects_root = ET.parse(sys.argv[1]).getroot()
+          projects = projects_root.findall("m:project", NAMESPACE)
+          checked = 0
+          violations = []
 
-          if missing_name:
-              print("Found pom.xml files without a non-empty <name>:")
-              for path in missing_name:
-                  print(f" - {path}")
+          for project in projects:
+              group_id = read_text(project, "m:groupId")
+              if group_id != TARGET_GROUP_ID:
+                  continue
+
+              artifact_id = read_text(project, "m:artifactId")
+              version = read_text(project, "m:version")
+              checked += 1
+              coord = f"{group_id}:{artifact_id}:{version}"
+
+              if not read_text(project, "m:name"):
+                  violations.append(f"{coord}: missing non-empty <name>")
+              if not read_text(project, "m:description"):
+                  violations.append(f"{coord}: missing non-empty <description>")
+              if not read_text(project, "m:url"):
+                  violations.append(f"{coord}: missing non-empty <url>")
+
+              licenses = project.findall("m:licenses/m:license", NAMESPACE)
+              if not licenses:
+                  violations.append(f"{coord}: missing <licenses>/<license>")
+              elif not any(read_text(license_node, "m:name") and read_text(license_node, "m:url") for license_node in licenses):
+                  violations.append(f"{coord}: at least one license must include non-empty <name> and <url>")
+
+              developers = project.findall("m:developers/m:developer", NAMESPACE)
+              if not developers:
+                  violations.append(f"{coord}: missing <developers>/<developer>")
+              elif not any(read_text(developer_node, "m:name") or read_text(developer_node, "m:email") for developer_node in developers):
+                  violations.append(f"{coord}: at least one developer must include <name> or <email>")
+
+              scm = project.find("m:scm", NAMESPACE)
+              if scm is None:
+                  violations.append(f"{coord}: missing <scm>")
+              else:
+                  for field in ("connection", "developerConnection", "url"):
+                      if not read_text(scm, f"m:{field}"):
+                          violations.append(f"{coord}: missing non-empty <scm><{field}>")
+
+          if checked == 0:
+              violations.append("No projects from groupId org.octopusden.octopus.tools.wl found in effective POM")
+
+          if violations:
+              print("Maven Central metadata validation failed:")
+              for violation in violations:
+                  print(f" - {violation}")
               raise SystemExit(1)
 
-          print(f"Validated {len(files)} pom.xml files: all contain non-empty <name>.")
+          print(f"Maven Central metadata validation passed for {checked} project(s).")
           PY
 
   build:
