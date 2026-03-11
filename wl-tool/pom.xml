@@ -9,6 +9,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>wl-tool</artifactId>
+    <name>wl-tool</name>
     <build>
         <plugins>
             <plugin>
