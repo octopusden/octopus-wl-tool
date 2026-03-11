@@ -17,12 +17,22 @@ class TextTokenHandler(private val validationRules: List<FileValidationRule>, pr
         val replacer = Replacer(pattern, token)
         val tokenWithPlaceholder = replacer.replace()
         for (rule in validationRules) {
-            if (containsBoundedRule(tokenWithPlaceholder, rule.rule)) {
-                val suggestedReplacement = replaceBoundedRule(
-                    tokenWithPlaceholder,
-                    rule.rule,
-                    rule.suggestedReplacement
-                ).replaceBack(replacer)
+            val useBoundedMatching = shouldUseBoundedMatching(rule)
+            val hasMatch = if (useBoundedMatching) {
+                containsBoundedRule(tokenWithPlaceholder, rule.rule)
+            } else {
+                tokenWithPlaceholder.contains(rule.rule)
+            }
+            if (hasMatch) {
+                val suggestedReplacement = if (useBoundedMatching) {
+                    replaceBoundedRule(
+                        tokenWithPlaceholder,
+                        rule.rule,
+                        rule.suggestedReplacement
+                    )
+                } else {
+                    tokenWithPlaceholder.replace(rule.rule, rule.suggestedReplacement)
+                }.replaceBack(replacer)
                 return ValidationProblem(
                     line,
                     startPos,
@@ -35,6 +45,12 @@ class TextTokenHandler(private val validationRules: List<FileValidationRule>, pr
             }
         }
         return null
+    }
+
+    private fun shouldUseBoundedMatching(rule: FileValidationRule): Boolean {
+        // Self-mapping rules in wl-conf represent forbidden terms.
+        // Match them as standalone words/tokens to avoid substring false positives.
+        return rule.rule == rule.suggestedReplacement
     }
 
     private fun containsBoundedRule(token: String, rule: String): Boolean {

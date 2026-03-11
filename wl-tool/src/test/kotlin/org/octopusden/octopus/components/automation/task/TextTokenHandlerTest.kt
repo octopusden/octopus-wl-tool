@@ -86,7 +86,7 @@ internal class TextTokenHandlerTest {
     @Test
     fun testShouldNotMatchRuleInsideAnotherToken() {
         val textTokenHandler = TextTokenHandler(
-            listOf(FileValidationRule("OWS_", "OPS_")),
+            listOf(FileValidationRule("OWS_", "OWS_")),
             emptyList()
         )
         val validationProblem =
@@ -97,19 +97,19 @@ internal class TextTokenHandlerTest {
     @Test
     fun testShouldMatchStandaloneTokenRule() {
         val textTokenHandler = TextTokenHandler(
-            listOf(FileValidationRule("OWS_", "OPS_")),
+            listOf(FileValidationRule("OWS_", "OWS_")),
             emptyList()
         )
         val validationProblem =
             textTokenHandler.testTokenAgainstRules("OWS_", 1, 1, 4)
         assertNotNull(validationProblem)
-        assertEquals("OPS_", validationProblem?.suggestedReplacement)
+        assertEquals("OWS_", validationProblem?.suggestedReplacement)
     }
 
     @Test
     fun testShouldNotMatchWordRuleInsideAnotherWord() {
         val textTokenHandler = TextTokenHandler(
-            listOf(FileValidationRule("issuing", "issuance")),
+            listOf(FileValidationRule("issuing", "issuing")),
             emptyList()
         )
         val validationProblem =
@@ -120,12 +120,24 @@ internal class TextTokenHandlerTest {
     @Test
     fun testShouldMatchStandaloneWordRule() {
         val textTokenHandler = TextTokenHandler(
-            listOf(FileValidationRule("issuing", "issuance")),
+            listOf(FileValidationRule("issuing", "issuing")),
             emptyList()
         )
         val validationProblem =
             textTokenHandler.testTokenAgainstRules("issuing", 1, 1, 7)
         assertNotNull(validationProblem)
-        assertEquals("issuance", validationProblem?.suggestedReplacement)
+        assertEquals("issuing", validationProblem?.suggestedReplacement)
+    }
+
+    @Test
+    fun testShouldKeepSubstringMatchingForAlphaNumericRule() {
+        val textTokenHandler = TextTokenHandler(
+            listOf(FileValidationRule("brand2", "b")),
+            emptyList()
+        )
+        val validationProblem =
+            textTokenHandler.testTokenAgainstRules("brand2maps", 1, 1, 10)
+        assertNotNull(validationProblem)
+        assertEquals("bmaps", validationProblem?.suggestedReplacement)
     }
 }
