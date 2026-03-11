@@ -17,8 +17,22 @@ class TextTokenHandler(private val validationRules: List<FileValidationRule>, pr
         val replacer = Replacer(pattern, token)
         val tokenWithPlaceholder = replacer.replace()
         for (rule in validationRules) {
-            if (tokenWithPlaceholder.contains(rule.rule)) {
-                val suggestedReplacement = token.replace(rule.rule, rule.suggestedReplacement).replaceBack(replacer)
+            val useBoundedMatching = shouldUseBoundedMatching(rule)
+            val hasMatch = if (useBoundedMatching) {
+                containsBoundedRule(tokenWithPlaceholder, rule.rule)
+            } else {
+                tokenWithPlaceholder.contains(rule.rule)
+            }
+            if (hasMatch) {
+                val suggestedReplacement = if (useBoundedMatching) {
+                    replaceBoundedRule(
+                        tokenWithPlaceholder,
+                        rule.rule,
+                        rule.suggestedReplacement
+                    )
+                } else {
+                    tokenWithPlaceholder.replace(rule.rule, rule.suggestedReplacement)
+                }.replaceBack(replacer)
                 return ValidationProblem(
                     line,
                     startPos,
@@ -31,6 +45,58 @@ class TextTokenHandler(private val validationRules: List<FileValidationRule>, pr
             }
         }
         return null
+    }
+
+    private fun shouldUseBoundedMatching(rule: FileValidationRule): Boolean {
+        // Self-mapping rules in wl-conf represent forbidden terms.
+        // Match them as standalone words/tokens to avoid substring false positives.
+        return rule.rule == rule.suggestedReplacement
+    }
+
+    private fun containsBoundedRule(token: String, rule: String): Boolean {
+        if (rule.isEmpty()) {
+            return false
+        }
+
+        var index = token.indexOf(rule)
+        while (index >= 0) {
+            val endExclusive = index + rule.length
+            if (isBoundary(token, index - 1) && isBoundary(token, endExclusive)) {
+                return true
+            }
+            index = token.indexOf(rule, index + 1)
+        }
+        return false
+    }
+
+    private fun replaceBoundedRule(token: String, rule: String, replacement: String): String {
+        if (rule.isEmpty()) {
+            return token
+        }
+
+        val sb = StringBuilder()
+        var cursor = 0
+        var index = token.indexOf(rule)
+        while (index >= 0) {
+            val endExclusive = index + rule.length
+            sb.append(token, cursor, index)
+            if (isBoundary(token, index - 1) && isBoundary(token, endExclusive)) {
+                sb.append(replacement)
+            } else {
+                sb.append(token, index, endExclusive)
+            }
+            cursor = endExclusive
+            index = token.indexOf(rule, cursor)
+        }
+        sb.append(token, cursor, token.length)
+        return sb.toString()
+    }
+
+    private fun isBoundary(token: String, index: Int): Boolean {
+        if (index < 0 || index >= token.length) {
+            return true
+        }
+        return !token[index].isLetterOrDigit()
     }
 
     class Replacer(val pattern: Pattern, val token: String) {

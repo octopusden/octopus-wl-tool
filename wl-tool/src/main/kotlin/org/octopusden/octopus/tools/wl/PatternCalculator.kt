@@ -5,6 +5,10 @@ import kotlin.streams.toList
 class PatternCalculator {
 
     fun calculate(items: List<String>): String {
+        if (items.isEmpty()) {
+            // A regex that never matches. Avoids accidental empty-string matching.
+            return "(?!)"
+        }
         return items.joinToString("|") { it ->
             it.chars().mapToObj { it.toChar() }.toList()
                 .joinToString("", "(", ")") { c ->

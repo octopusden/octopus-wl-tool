@@ -82,4 +82,62 @@ internal class TextTokenHandlerTest {
             textTokenHandler.testTokenAgainstRules(token, 1, 1, 10)
         assertNull(validationProblem2)
     }
+
+    @Test
+    fun testShouldNotMatchRuleInsideAnotherToken() {
+        val textTokenHandler = TextTokenHandler(
+            listOf(FileValidationRule("SFX_", "SFX_")),
+            emptyList()
+        )
+        val validationProblem =
+            textTokenHandler.testTokenAgainstRules("REQUIRED_SFX_JSON", 1, 1, 17)
+        assertNull(validationProblem)
+    }
+
+    @Test
+    fun testShouldMatchStandaloneTokenRule() {
+        val textTokenHandler = TextTokenHandler(
+            listOf(FileValidationRule("SFX_", "SFX_")),
+            emptyList()
+        )
+        val validationProblem =
+            textTokenHandler.testTokenAgainstRules("SFX_", 1, 1, 4)
+        assertNotNull(validationProblem)
+        assertEquals("SFX_", validationProblem?.suggestedReplacement)
+    }
+
+    @Test
+    fun testShouldNotMatchWordRuleInsideAnotherWord() {
+        val textTokenHandler = TextTokenHandler(
+            listOf(FileValidationRule("issuing", "issuing")),
+            emptyList()
+        )
+        val validationProblem =
+            textTokenHandler.testTokenAgainstRules("reissuing", 1, 1, 9)
+        assertNull(validationProblem)
+    }
+
+    @Test
+    fun testShouldMatchStandaloneWordRule() {
+        val textTokenHandler = TextTokenHandler(
+            listOf(FileValidationRule("issuing", "issuing")),
+            emptyList()
+        )
+        val validationProblem =
+            textTokenHandler.testTokenAgainstRules("issuing", 1, 1, 7)
+        assertNotNull(validationProblem)
+        assertEquals("issuing", validationProblem?.suggestedReplacement)
+    }
+
+    @Test
+    fun testShouldKeepSubstringMatchingForAlphaNumericRule() {
+        val textTokenHandler = TextTokenHandler(
+            listOf(FileValidationRule("brand2", "b")),
+            emptyList()
+        )
+        val validationProblem =
+            textTokenHandler.testTokenAgainstRules("brand2maps", 1, 1, 10)
+        assertNotNull(validationProblem)
+        assertEquals("bmaps", validationProblem?.suggestedReplacement)
+    }
 }
