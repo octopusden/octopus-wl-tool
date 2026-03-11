@@ -3,6 +3,40 @@ name: Maven Compile & UT
 on: [push, pull_request, workflow_dispatch]
 
 jobs:
+  validate-pom-name:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate non-empty project name in pom.xml files
+        run: |
+          python3 - <<'PY'
+          import subprocess
+          import xml.etree.ElementTree as ET
+
+          NAMESPACE = {"m": "http://maven.apache.org/POM/4.0.0"}
+
+          files = [
+              path for path in subprocess.check_output(["git", "ls-files"], text=True).splitlines()
+              if path == "pom.xml" or path.endswith("/pom.xml")
+          ]
+
+          missing_name = []
+          for path in files:
+              root = ET.parse(path).getroot()
+              name = root.find("m:name", NAMESPACE)
+              if name is None or not (name.text or "").strip():
+                  missing_name.append(path)
+
+          if missing_name:
+              print("Found pom.xml files without a non-empty <name>:")
+              for path in missing_name:
+                  print(f" - {path}")
+              raise SystemExit(1)
+
+          print(f"Validated {len(files)} pom.xml files: all contain non-empty <name>.")
+          PY
+
   build:
     uses: octopusden/octopus-base/.github/workflows/common-java-maven-build.yml@v2.1.8
     with:
