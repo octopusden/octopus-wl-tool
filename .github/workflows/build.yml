@@ -82,6 +82,9 @@ jobs:
           PY
 
   build:
+    needs:
+      - validate-pom-name
+    if: ${{ always() && (github.event_name != 'pull_request' || needs.validate-pom-name.result == 'success') }}
     uses: octopusden/octopus-base/.github/workflows/common-java-maven-build.yml@v2.1.12
     with:
       java-version: '8'
