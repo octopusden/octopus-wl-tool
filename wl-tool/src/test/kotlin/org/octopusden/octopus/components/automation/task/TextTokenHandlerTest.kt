@@ -86,24 +86,24 @@ internal class TextTokenHandlerTest {
     @Test
     fun testShouldNotMatchRuleInsideAnotherToken() {
         val textTokenHandler = TextTokenHandler(
-            listOf(FileValidationRule("OWS_", "OWS_")),
+            listOf(FileValidationRule("SFX_", "SFX_")),
             emptyList()
         )
         val validationProblem =
-            textTokenHandler.testTokenAgainstRules("REQUIRED_WORKFLOWS_JSON", 1, 1, 24)
+            textTokenHandler.testTokenAgainstRules("REQUIRED_SFX_JSON", 1, 1, 17)
         assertNull(validationProblem)
     }
 
     @Test
     fun testShouldMatchStandaloneTokenRule() {
         val textTokenHandler = TextTokenHandler(
-            listOf(FileValidationRule("OWS_", "OWS_")),
+            listOf(FileValidationRule("SFX_", "SFX_")),
             emptyList()
         )
         val validationProblem =
-            textTokenHandler.testTokenAgainstRules("OWS_", 1, 1, 4)
+            textTokenHandler.testTokenAgainstRules("SFX_", 1, 1, 4)
         assertNotNull(validationProblem)
-        assertEquals("OWS_", validationProblem?.suggestedReplacement)
+        assertEquals("SFX_", validationProblem?.suggestedReplacement)
     }
 
     @Test
