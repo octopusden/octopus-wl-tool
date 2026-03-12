@@ -4,7 +4,7 @@ on: workflow_dispatch
 
 jobs:
   build:
-    uses: octopusden/octopus-base/.github/workflows/common-java-maven-release.yml@v2.1.8
+    uses: octopusden/octopus-base/.github/workflows/common-java-maven-release.yml@v2.1.12
     with:
       java-version: '8'
       flow-type: public
