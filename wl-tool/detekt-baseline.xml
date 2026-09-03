@@ -1,0 +1,19 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ExplicitItLambdaParameter:PatternCalculator.kt$PatternCalculator${ it -&gt; it.chars().mapToObj { it.toChar() }.toList() .joinToString("", "(", ")") { c -&gt; if (c.isLetter()) { "[${c.lowercase()}${c.uppercase()}]" } else { c.toString() } } }</ID>
+    <ID>ForbiddenComment:WLSourceValidator.kt$WLSourceValidator$// TODO: hidding potential bugs!</ID>
+    <ID>LongMethod:WLSourceValidatorTest.kt$WLSourceValidatorTest$@Test fun validateTest()</ID>
+    <ID>MagicNumber:WLSourceValidator.kt$WLSourceValidator$100</ID>
+    <ID>MagicNumber:WLSourceValidator.kt$WLSourceValidator$1000</ID>
+    <ID>NestedBlockDepth:WLReportGenerator.kt$WLReportGenerator$fun printValidationReport(validationResult: ProjectValidationResult, errorsReportFile: File, successReportFile: File, version: String)</ID>
+    <ID>NestedBlockDepth:WLSourceValidator.kt$WLSourceValidator$private fun processJavaSourceFile(file: Path): Outcome&lt;List&lt;ValidationProblem&gt;&gt;</ID>
+    <ID>ReturnCount:TextTokenHandler.kt$TextTokenHandler$private fun containsBoundedRule(token: String, rule: String): Boolean</ID>
+    <ID>TooGenericExceptionCaught:WLSourceValidator.kt$WLSourceValidator$ex: Throwable</ID>
+    <ID>TooManyFunctions:WLSourceValidator.kt$WLSourceValidator</ID>
+    <ID>UseCheckOrError:WLSourceValidatorTest.kt$WLSourceValidatorTest$throw IllegalStateException("Can't find $relativePath in resources")</ID>
+    <ID>UseRequire:WLSourceValidator.kt$WLSourceValidator.Companion$throw IllegalArgumentException("Config=${p.toAbsolutePath()} does not exist")</ID>
+    <ID>WildcardImport:PatternCalculatorTest.kt$import org.junit.jupiter.api.Assertions.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

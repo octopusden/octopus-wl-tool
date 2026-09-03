@@ -119,6 +119,7 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.6.1</version>
                 <executions>
                     <execution>
                         <phase>generate-sources</phase>
@@ -128,6 +129,21 @@
                         <configuration>
                             <sources>
                                 <source>src/main/kotlin</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                    <!-- kotlin-maven-plugin compiles src/test/kotlin through its own sourceDirs,
+                         which never reach the Maven model - so the linters would not see the
+                         tests at all. -->
+                    <execution>
+                        <id>add-test-kotlin-sources</id>
+                        <phase>generate-test-sources</phase>
+                        <goals>
+                            <goal>add-test-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>src/test/kotlin</source>
                             </sources>
                         </configuration>
                     </execution>
@@ -158,4 +174,55 @@
                 </plugin>
         </plugins>
     </build>
+    <profiles>
+        <!-- Linters are not in the default build: the release runs on JDK 8 (see
+             .github/workflows/release.yml) and these plugins need a newer JVM. The
+             Quality Gates workflow activates this profile on JDK 11. -->
+        <profile>
+            <id>quality</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.github.gantsign.maven</groupId>
+                        <artifactId>ktlint-maven-plugin</artifactId>
+                        <version>3.7.1</version>
+                        <executions>
+                            <execution>
+                                <id>ktlint</id>
+                                <phase>process-test-sources</phase>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>com.github.ozsie</groupId>
+                        <artifactId>detekt-maven-plugin</artifactId>
+                        <version>1.23.8</version>
+                        <executions>
+                            <execution>
+                                <id>detekt</id>
+                                <phase>process-test-sources</phase>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <buildUponDefaultConfig>true</buildUponDefaultConfig>
+                            <config>${maven.multiModuleProjectDirectory}/detekt.yml</config>
+                            <!-- Baseline holds the violations that existed when detekt was
+                                 introduced; new code must not add entries to it. Regenerate
+                                 with: mvn -P quality generate-test-sources detekt:create-baseline -->
+                            <baseline>${project.basedir}/detekt-baseline.xml</baseline>
+                            <!-- src/test/resources holds .kt files that are test input for the
+                                 white labeling validators, not code of this project. -->
+                            <excludes>**/resources/**</excludes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

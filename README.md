@@ -20,6 +20,24 @@ mvn package
 
 CI (`Maven Compile & UT`) builds on JDK 8; the build and the tests also pass on JDK 11 and 21.
 
+## Quality gates
+
+```bash
+mvn -P quality package            # ktlint + detekt, with the tests
+mvn -P quality generate-test-sources ktlint:format   # fix what ktlint can fix itself
+```
+
+`ktlint` reads `.editorconfig` (`intellij_idea` code style, `max_line_length = 140`), `detekt`
+reads `detekt.yml` on top of its own defaults. The rules follow
+`octopus-base/docs/Octopus Kotlin Style Guide.md`.
+
+Violations that existed when detekt was introduced are in `*/detekt-baseline.xml`; new code must
+not add entries there. Regenerate with
+`mvn -P quality generate-test-sources detekt:create-baseline`.
+
+The linters are in the `quality` profile, not in the default build: they need a newer JVM than
+the JDK 8 the release runs on. CI activates the profile in the `Quality Gates` workflow on JDK 11.
+
 ## Release
 
 `Actions` → `Maven Release` → `Run workflow`. It calls
