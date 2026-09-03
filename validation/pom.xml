@@ -12,6 +12,7 @@
 
     <artifactId>validation</artifactId>
     <name>Octopus WL Validation</name>
+    <description>White labeling validators and file filters shared by the wl-tool and its Gradle tasks.</description>
 
     <build>
         <plugins>
