@@ -3,14 +3,9 @@ package org.octopusden.octopus.components.automation.task
 import org.slf4j.LoggerFactory
 import java.io.File
 
-public class WLReportGenerator() {
+public class WLReportGenerator {
 
-    fun printValidationReport(
-        validationResult: ProjectValidationResult,
-        errorsReportFile: File,
-        successReportFile: File,
-        version: String
-    ) {
+    fun printValidationReport(validationResult: ProjectValidationResult, errorsReportFile: File, successReportFile: File, version: String) {
         if (validationResult.isNotEmpty()) {
             logger.info("Publishing report to $errorsReportFile")
             errorsReportFile.printWriter().use { out ->
@@ -20,7 +15,7 @@ public class WLReportGenerator() {
                 if (validationResult.fileNameProblems.isNotEmpty()) {
                     out.println("\n===========File renaming =======================\n")
                     validationResult.fileNameProblems.forEach { old, new ->
-                        out.println("Rename ${old} -> ${new}")
+                        out.println("Rename $old -> $new")
                     }
                 }
                 out.println("\n=========== Content Validation Errors  =======================\n")
@@ -29,7 +24,9 @@ public class WLReportGenerator() {
 
                     v.forEach { item ->
                         if (item.brokenRegex.isNotEmpty()) {
-                            out.println("line=${item.line} \"${item.validationProblem.trim()}\" mustn't match reqexp: \"${item.brokenRegex}")
+                            out.println(
+                                "line=${item.line} \"${item.validationProblem.trim()}\" mustn't match reqexp: \"${item.brokenRegex}",
+                            )
                         } else {
                             out.println("$file:${item.line},${item.startPosition} \"${item.problemToken}\" \"${item.validationProblem} ")
                         }

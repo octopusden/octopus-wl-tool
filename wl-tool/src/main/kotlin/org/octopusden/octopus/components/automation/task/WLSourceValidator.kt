@@ -20,22 +20,17 @@ import kotlin.io.path.fileSize
 import kotlin.io.path.inputStream
 import kotlin.io.path.isRegularFile
 
-class WLSourceValidator(
-    private val sourceRoot: Path,
-    validationConfig: Path,
-    val filterConfig: Path,
-    forbiddenPatterns: Path
-) {
+class WLSourceValidator(private val sourceRoot: Path, validationConfig: Path, val filterConfig: Path, forbiddenPatterns: Path) {
     val validationRules: List<FileValidationRule>
-    private val copyrightValidator:CopyrightValidator
-    private val props : WLProperties
-    private val exceptionItems : List<String>
-    private val restrictedItems : List<String>
+    private val copyrightValidator: CopyrightValidator
+    private val props: WLProperties
+    private val exceptionItems: List<String>
+    private val restrictedItems: List<String>
 
     init {
         validateConfigFiles(sourceRoot, validationConfig, filterConfig, forbiddenPatterns)
 
-        props  = objectMapper.readValue(forbiddenPatterns.toFile())
+        props = objectMapper.readValue(forbiddenPatterns.toFile())
         exceptionItems = props.exceptions
         restrictedItems = listOf(props.restricted)
         copyrightValidator = CopyrightValidator(props.contains, props.patterns)
@@ -76,7 +71,14 @@ class WLSourceValidator(
         val suggestedReplacements = fileContentProblems.values.flatMap(::distinctProblems).toMap()
 
         val projectValidationResult =
-            ProjectValidationResult(fileNameProblems, fileContentProblems, suggestedReplacements, skippedFiles.map { sourceRoot.relativize(it) })
+            ProjectValidationResult(
+                fileNameProblems,
+                fileContentProblems,
+                suggestedReplacements,
+                skippedFiles.map {
+                    sourceRoot.relativize(it)
+                },
+            )
         logger.info("Validation finished successfully")
 
         return projectValidationResult
@@ -95,13 +97,11 @@ class WLSourceValidator(
         }
     }
 
-    private fun distinctProblems(validationProblems: List<ValidationProblem>): List<Pair<String, String>> {
-        return validationProblems.map { it.problemToken to it.suggestedReplacement }
+    private fun distinctProblems(validationProblems: List<ValidationProblem>): List<Pair<String, String>> = validationProblems.map {
+        it.problemToken to it.suggestedReplacement
     }
 
-    private fun checkForNameProblems(filesToCheck: List<Path>): Map<String, String> {
-        return filesToCheck.mapNotNull(::verifyFileName).toMap()
-    }
+    private fun checkForNameProblems(filesToCheck: List<Path>): Map<String, String> = filesToCheck.mapNotNull(::verifyFileName).toMap()
 
     private fun verifyFileName(file: Path): Pair<String, String>? {
         val testTokenAgainstRules =
@@ -116,7 +116,7 @@ class WLSourceValidator(
             val text = exceptionItems.fold(initialText) { result, element ->
                 result.replace(
                     element,
-                    TextTokenHandler.PLACEHOLDER
+                    TextTokenHandler.PLACEHOLDER,
                 )
             }
             restrictedItems.map { restrictedItem ->
@@ -133,7 +133,6 @@ class WLSourceValidator(
         return filePath to validationProblems
     }
 
-
     fun checkFileContent(file: Path): Pair<Path, List<ValidationProblem>> {
         logger.debug("Start validation for file={}", file.relativizeAgainstSourceRoot())
         val validationProblems = when (file.extension) {
@@ -145,14 +144,16 @@ class WLSourceValidator(
 
         return when (validationProblems) {
             is Ok -> file.relativizeAgainstSourceRoot() to validationProblems.value
+
             is Er -> {
                 logger.warn(
                     "Can't process file=${file.relativizeAgainstSourceRoot()}, fallback to text processing",
-                    validationProblems.error.message
+                    validationProblems.error.message,
                 )
                 // fallback to simple text processing
                 when (val result = processTextFile(file)) {
                     is Ok -> file.relativizeAgainstSourceRoot() to result.value
+
                     is Er -> {
                         logger.error("Can't process file=${file.relativizeAgainstSourceRoot()}", result.error)
                         file to emptyList()
@@ -162,27 +163,23 @@ class WLSourceValidator(
         }
     }
 
-    private fun processTextFile(
-        file: Path,
-    ): Outcome<List<ValidationProblem>> {
-        return try {
-            val validationProblems: MutableList<ValidationProblem> = ArrayList()
-            file.bufferedReader().use { bufferedReader ->
-                var lineNumber = 0
-                var line = bufferedReader.readLine()
-                while (line != null) {
-                    lineNumber += 1
+    private fun processTextFile(file: Path): Outcome<List<ValidationProblem>> = try {
+        val validationProblems: MutableList<ValidationProblem> = ArrayList()
+        file.bufferedReader().use { bufferedReader ->
+            var lineNumber = 0
+            var line = bufferedReader.readLine()
+            while (line != null) {
+                lineNumber += 1
 
-                    val result = processText(line, lineNumber)
-                    validationProblems.addAll(result)
+                val result = processText(line, lineNumber)
+                validationProblems.addAll(result)
 
-                    line = bufferedReader.readLine()
-                }
-                Ok(validationProblems)
+                line = bufferedReader.readLine()
             }
-        } catch (ex: Throwable) {
-            Er(ex)
+            Ok(validationProblems)
         }
+    } catch (ex: Throwable) {
+        Er(ex)
     }
 
     private fun processText(text: String, lineNumber: Int): List<ValidationProblem> {
@@ -195,7 +192,7 @@ class WLSourceValidator(
                 token,
                 lineNumber,
                 startPos,
-                endPos
+                endPos,
             )
             if (result != null) {
                 validationProblems.add(result)
@@ -204,78 +201,71 @@ class WLSourceValidator(
         return validationProblems
     }
 
-    private fun processStructuredFormat(
-        objectMapper: ObjectMapper,
-        file: Path,
-    ): Outcome<List<ValidationProblem>> {
-        return try {
-            val parser = objectMapper.createParser(file.toFile())
+    private fun processStructuredFormat(objectMapper: ObjectMapper, file: Path): Outcome<List<ValidationProblem>> = try {
+        val parser = objectMapper.createParser(file.toFile())
 
-            var location = parser.currentLocation
-            var token = parser.nextToken()
-            val validationProblems: MutableList<ValidationProblem> = ArrayList()
+        var location = parser.currentLocation
+        var token = parser.nextToken()
+        val validationProblems: MutableList<ValidationProblem> = ArrayList()
 
-            while (token != null) {
-                if (!token.isStructStart && !token.isStructEnd) {
-                    val tokenText = parser.text
-                    val line = location.lineNr
+        while (token != null) {
+            if (!token.isStructStart && !token.isStructEnd) {
+                val tokenText = parser.text
+                val line = location.lineNr
 
-                    validationProblems.addAll(processText(tokenText, line))
-                }
-                token = parser.nextToken()
-                location = parser.currentLocation
+                validationProblems.addAll(processText(tokenText, line))
             }
-            Ok(validationProblems)
-        } catch (ex: Throwable) {
-            Er(ex)
+            token = parser.nextToken()
+            location = parser.currentLocation
         }
+        Ok(validationProblems)
+    } catch (ex: Throwable) {
+        Er(ex)
     }
 
-    private fun processJavaSourceFile(file: Path): Outcome<List<ValidationProblem>> {
-        return try {
-            val parseResult = JavaParser().parse(file)
-            if (parseResult.isSuccessful) {
-                val validationProblems: MutableList<ValidationProblem> = ArrayList()
+    private fun processJavaSourceFile(file: Path): Outcome<List<ValidationProblem>> = try {
+        val parseResult = JavaParser().parse(file)
+        if (parseResult.isSuccessful) {
+            val validationProblems: MutableList<ValidationProblem> = ArrayList()
 
-                if (parseResult.commentsCollection.isPresent) {
-                    parseResult.commentsCollection.get().comments.forEach {
-                        val commentText = it.content
-                        val result = processText(commentText, it.begin.get().line)
-                        validationProblems.addAll(result)
-                    }
+            if (parseResult.commentsCollection.isPresent) {
+                parseResult.commentsCollection.get().comments.forEach {
+                    val commentText = it.content
+                    val result = processText(commentText, it.begin.get().line)
+                    validationProblems.addAll(result)
                 }
-
-                val ast = parseResult.result.get()
-                ast.walk { node ->
-                    if (node is NodeWithIdentifier<*>) {
-                        val identifier = node.identifier
-                        val nodeBegin = node.begin.get()
-                        val nodeEnd = node.end.get()
-
-                        val line = nodeBegin.line
-                        val startPos = nodeEnd.column - identifier.length
-                        val endPos = nodeEnd.column
-
-                        val result = TextTokenHandler(validationRules, exceptionItems).testTokenAgainstRules(
-                            identifier,
-                            line,
-                            startPos,
-                            endPos,
-                        )
-
-                        if (result != null) {
-                            validationProblems.add(result)
-                        }
-                    }
-                }
-                Ok(validationProblems)
-            } else {
-                Er(Exception("Parse error=${parseResult.problems}"))
             }
-        } catch (ex: Throwable) {
-            //TODO: hidding potential bugs!
-            Er(ex)
+
+            val ast = parseResult.result.get()
+            ast.walk { node ->
+                if (node is NodeWithIdentifier<*>) {
+                    val identifier = node.identifier
+                    val nodeBegin = node.begin.get()
+                    val nodeEnd = node.end.get()
+
+                    val line = nodeBegin.line
+                    val startPos = nodeEnd.column - identifier.length
+                    val endPos = nodeEnd.column
+
+                    val result = TextTokenHandler(validationRules, exceptionItems).testTokenAgainstRules(
+                        identifier,
+                        line,
+                        startPos,
+                        endPos,
+                    )
+
+                    if (result != null) {
+                        validationProblems.add(result)
+                    }
+                }
+            }
+            Ok(validationProblems)
+        } else {
+            Er(Exception("Parse error=${parseResult.problems}"))
         }
+    } catch (ex: Throwable) {
+        // TODO: hidding potential bugs!
+        Er(ex)
     }
 
     private fun Path.relativizeAgainstSourceRoot() = sourceRoot.relativize(this)
@@ -301,23 +291,21 @@ class WLSourceValidator(
                 .sortedByDescending { it.rule.length }
         }
 
-        internal fun extendMapping(mappings: List<MappingConfig>, restricted: String): Map<String, String> {
-            return mappings.flatMap{process(it, restricted)}.toMap()
-        }
+        internal fun extendMapping(mappings: List<MappingConfig>, restricted: String): Map<String, String> = mappings.flatMap {
+            process(it, restricted)
+        }.toMap()
 
-        private fun process(mappingConfig: MappingConfig, restricted: String): List<Pair<String, String>> {
-            return listOf(
-                snakeCase(mappingConfig.originTokenized) to snakeCase(mappingConfig.replacementTokenized),
-                camelCase(mappingConfig.originTokenized) to camelCase(mappingConfig.replacementTokenized),
-                camelCaseFirstSentenceCase(mappingConfig.originTokenized) to camelCaseFirstSentenceCase(mappingConfig.replacementTokenized),
-                restrictedCapitalized(mappingConfig.originTokenized, restricted) to camelCase(mappingConfig.replacementTokenized),
-                mappingConfig.origin to mappingConfig.replacement,
-                mappingConfig.origin.lowercase() to mappingConfig.replacement.lowercase()
-            )
-        }
+        private fun process(mappingConfig: MappingConfig, restricted: String): List<Pair<String, String>> = listOf(
+            snakeCase(mappingConfig.originTokenized) to snakeCase(mappingConfig.replacementTokenized),
+            camelCase(mappingConfig.originTokenized) to camelCase(mappingConfig.replacementTokenized),
+            camelCaseFirstSentenceCase(mappingConfig.originTokenized) to camelCaseFirstSentenceCase(mappingConfig.replacementTokenized),
+            restrictedCapitalized(mappingConfig.originTokenized, restricted) to camelCase(mappingConfig.replacementTokenized),
+            mappingConfig.origin to mappingConfig.replacement,
+            mappingConfig.origin.lowercase() to mappingConfig.replacement.lowercase(),
+        )
 
-        private fun restrictedCapitalized(string: String, restrictedItem: String, delimiter: String = ",", separator: String = ""): String {
-            return if (string.startsWith(restrictedItem, true)) {
+        private fun restrictedCapitalized(string: String, restrictedItem: String, delimiter: String = ",", separator: String = ""): String =
+            if (string.startsWith(restrictedItem, true)) {
                 val sb = StringBuilder()
                 val parts = string.split(delimiter)
                 val restrictedToken = parts[0]
@@ -327,35 +315,22 @@ class WLSourceValidator(
             } else {
                 camelCase(string, delimiter, separator)
             }
-        }
 
-        private fun snakeCase(string: String, delimiter: String = ",", separator: String = "_"): String {
-            return string.split(delimiter).joinToString(separator = separator, transform = String::uppercase)
-        }
+        private fun snakeCase(string: String, delimiter: String = ",", separator: String = "_"): String =
+            string.split(delimiter).joinToString(separator = separator, transform = String::uppercase)
 
-        private fun camelCase(string: String, delimiter: String = ",", separator: String = ""): String {
-            return string.split(delimiter).joinToString(separator = separator, transform = String::capitalize)
-        }
+        private fun camelCase(string: String, delimiter: String = ",", separator: String = ""): String =
+            string.split(delimiter).joinToString(separator = separator, transform = String::capitalize)
 
-        private fun camelCaseFirstSentenceCase(
-            string: String,
-            delimiter: String = ",",
-            separator: String = ""
-        ): String {
-            return camelCase(string, delimiter, separator).decapitalize()
-        }
+        private fun camelCaseFirstSentenceCase(string: String, delimiter: String = ",", separator: String = ""): String =
+            camelCase(string, delimiter, separator).decapitalize()
     }
 }
 
-internal fun String.split(): List<String> {
-    return this.split(" ", ",", ".", "=", ":", "(", ")", "\"", "\\", "/", "{", "}", "$", "<", ">")
-        .filter(String::isNotBlank)
-}
+internal fun String.split(): List<String> = this.split(" ", ",", ".", "=", ":", "(", ")", "\"", "\\", "/", "{", "}", "$", "<", ">")
+    .filter(String::isNotBlank)
 
-data class FileValidationRule(
-    val rule: String,
-    val suggestedReplacement: String,
-)
+data class FileValidationRule(val rule: String, val suggestedReplacement: String)
 
 data class ProjectValidationResult(
     val fileNameProblems: Map<String, String>,
@@ -363,20 +338,11 @@ data class ProjectValidationResult(
     val suggestedReplacements: Map<String, String>,
     val skippedFilesAndFolders: List<Path>,
 ) {
-    fun isNotEmpty(): Boolean {
-        return fileNameProblems.isNotEmpty() || fileContentProblems.isNotEmpty()
-    }
-    fun isEmpty(): Boolean {
-        return !isNotEmpty()
-    }
+    fun isNotEmpty(): Boolean = fileNameProblems.isNotEmpty() || fileContentProblems.isNotEmpty()
+    fun isEmpty(): Boolean = !isNotEmpty()
 }
 
-data class MappingConfig(
-    val origin: String,
-    val replacement: String,
-    val originTokenized: String,
-    val replacementTokenized: String,
-)
+data class MappingConfig(val origin: String, val replacement: String, val originTokenized: String, val replacementTokenized: String)
 
 sealed class Outcome<out T>
 

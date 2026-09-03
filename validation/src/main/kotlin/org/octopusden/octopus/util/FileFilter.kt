@@ -27,9 +27,7 @@ class FileFilter private constructor() {
         private val zipSignatures = listOf("50 4B 03 04", "50 4B 05 06", "50 4B 07 08")
 
         @JvmStatic
-        fun isZipFile(path: Path): Boolean {
-            return isZipFile(Files.newInputStream(path))
-        }
+        fun isZipFile(path: Path): Boolean = isZipFile(Files.newInputStream(path))
 
         @JvmStatic
         fun isZipFile(inputStream: InputStream): Boolean {
@@ -62,7 +60,7 @@ class FileFilter private constructor() {
                     pathZipEntryMap[path]?.let { entry -> zipFile.getInputStream(entry) }
                         ?: throw IllegalStateException()
                 },
-                { path -> pathZipEntryMap[path]?.isDirectory ?: throw IllegalStateException() }
+                { path -> pathZipEntryMap[path]?.isDirectory ?: throw IllegalStateException() },
             )
             return declined.mapNotNull { pathZipEntryMap[it] } to accepted.mapNotNull { pathZipEntryMap[it] }
         }
@@ -77,27 +75,21 @@ class FileFilter private constructor() {
          * return Pair<List<DeclinedFiles>,List<AcceptedFiles>>
          */
         @JvmStatic
-        fun filter(
-            config: FileFilterConfig,
-            start: Path
-        ): Pair<List<Path>, List<Path>> {
-            return filter(
-                config,
-                { Files.walk(start) },
-                { path -> start.relativize(path) },
-                { path -> path.inputStream() },
-                { path -> Files.isDirectory(path) }
-            )
-        }
+        fun filter(config: FileFilterConfig, start: Path): Pair<List<Path>, List<Path>> = filter(
+            config,
+            { Files.walk(start) },
+            { path -> start.relativize(path) },
+            { path -> path.inputStream() },
+            { path -> Files.isDirectory(path) },
+        )
 
         private fun filter(
             config: FileFilterConfig,
             pathStreamFunc: () -> Stream<Path>,
             pathRelativizeFunc: (Path) -> Path,
             extractDataFunc: (Path) -> InputStream,
-            isDirectoryFunc: (Path) -> Boolean
+            isDirectoryFunc: (Path) -> Boolean,
         ): Pair<List<Path>, List<Path>> {
-
             log.info("Start validation, full FileFilterConfig:$config")
             val directoryFilter = prepareDirectoryFilter(config)
             val filesFilter = prepareFileFilter(config)
@@ -139,7 +131,7 @@ class FileFilter private constructor() {
         @JvmStatic
         internal fun prepareFileContentFilter(
             fileFilterConfig: FileFilterConfig,
-            extractDataFunc: (Path) -> InputStream
+            extractDataFunc: (Path) -> InputStream,
         ): (Path) -> Boolean {
             val filters = fileFilterConfig.excludeFileContentFilters.map {
                 val includeMask = it.applyToFiles.map(::prependGlob)
@@ -203,7 +195,6 @@ class FileFilter private constructor() {
         }
 
         private fun loadConfigurations(globalConfig: Path, localConfig: Path): FileFilterConfig {
-
             val global = mapper.readValue(globalConfig.toFile(), FileFilterConfig::class.java)
             val localConfigPath = localConfig.resolve(WL_IGNORE_NAME)
 
@@ -215,10 +206,7 @@ class FileFilter private constructor() {
         }
 
         @JvmStatic
-        fun mergeConfigs(
-            globalConfig: FileFilterConfig,
-            localConfig: FileFilterConfig?
-        ): FileFilterConfig {
+        fun mergeConfigs(globalConfig: FileFilterConfig, localConfig: FileFilterConfig?): FileFilterConfig {
             log.info("Merge global=$globalConfig\nwith local=$localConfig")
             return localConfig?.let { localConfigValue ->
                 if (localConfigValue.includeDirs.isNotEmpty() || localConfigValue.includeFiles.isNotEmpty()) {
@@ -229,7 +217,9 @@ class FileFilter private constructor() {
                     excludeDirs = (localConfigValue.excludeDirs + globalConfig.excludeDirs).distinct(),
                     includeFiles = globalConfig.includeFiles,
                     excludeFiles = (localConfigValue.excludeFiles + globalConfig.excludeFiles).distinct(),
-                    excludeFileContentFilters = (localConfigValue.excludeFileContentFilters + globalConfig.excludeFileContentFilters).distinct()
+                    excludeFileContentFilters = (
+                        localConfigValue.excludeFileContentFilters + globalConfig.excludeFileContentFilters
+                        ).distinct(),
                 )
             } ?: globalConfig
         }
@@ -239,7 +229,7 @@ class FileFilter private constructor() {
             val excludeFilter = toMatchers(exclude)
             return { p: Path ->
                 includeFilter.any { m -> m.matches(p) } &&
-                        excludeFilter.none { m -> m.matches(p) }
+                    excludeFilter.none { m -> m.matches(p) }
             }
         }
 
@@ -249,16 +239,12 @@ class FileFilter private constructor() {
 
             return { p: Path ->
                 includeFilter.any { m -> m.matches(p.fileName) } &&
-                        excludeFilter.none { m -> m.matches(p) }
+                    excludeFilter.none { m -> m.matches(p) }
             }
         }
 
-        private fun toMatchers(patterns: List<String>): List<PathMatcher> {
-            return patterns.map(FileSystems.getDefault()::getPathMatcher)
-        }
+        private fun toMatchers(patterns: List<String>): List<PathMatcher> = patterns.map(FileSystems.getDefault()::getPathMatcher)
 
-        private fun prependGlob(pattern: String): String {
-            return "glob:$pattern"
-        }
+        private fun prependGlob(pattern: String): String = "glob:$pattern"
     }
 }
