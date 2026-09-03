@@ -1,6 +1,7 @@
 package org.octopusden.octopus.tools.wl.validation.validator
 
 import org.octopusden.octopus.components.automation.task.ValidationProblem
+import org.octopusden.octopus.components.automation.task.withContext
 import org.slf4j.LoggerFactory
 import java.io.InputStream
 import java.util.concurrent.CountDownLatch
@@ -12,10 +13,17 @@ import java.util.concurrent.TimeoutException
 
 class CopyrightValidator @JvmOverloads constructor(
     private val contains: List<String>,
-    private val patterns: List<Regex>,
+    patterns: List<Regex>,
     private val stringValidationTimeoutSec: Long = STRING_VALIDATION_TIMEOUT_SEC_DEFAULT,
     private val threadCount: Int = THREAD_COUNT_DEFAULT
 ) {
+    /**
+     * Matched with surrounding `.*` dropped, reported as configured. That `.*` makes the match group cover
+     * the whole line, so the reported excerpt shows the beginning of the line instead of the hit - fatal on
+     * a binary, where a "line" is tens of kilobytes. Dropping it does not change whether [Matcher.find]
+     * matches, only where; the configured text is kept so a report entry stays greppable in the config.
+     */
+    private val patterns = patterns.map { narrowToMatch(it) to it.pattern }
 
     fun validate(content: InputStream): List<ValidationProblem> {
         return content.bufferedReader().use { bufferedReader ->
@@ -97,22 +105,23 @@ class CopyrightValidator @JvmOverloads constructor(
         try {
             log.debug("Start validation, line: $nLine")
             patterns
-                .firstNotNullOfOrNull { regex ->
+                .firstNotNullOfOrNull { (regex, configuredPattern) ->
                     val matcher = regex.toPattern()
                         .matcher(InterruptibleCharSequence(string))
 
                     if (matcher.find()) {
-                        regex to matcher.toMatchResult()
+                        configuredPattern to matcher.toMatchResult()
                     } else {
                         null
                     }
-                }?.let { (regex, matchResult) ->
+                }?.let { (configuredPattern, matchResult) ->
                     val wrongString = matchResult.group()
                     log.debug("Validation error, line: $nLine")
                     val problemToken = wrongString.shortString()
                     validationProblem = ValidationProblem(
                         nLine, matchResult.start(), matchResult.end(),
-                        regex.pattern, problemToken, problemToken, ""
+                        configuredPattern, problemToken, problemToken, "",
+                        context = string.withContext(matchResult.start(), matchResult.end())
                     )
                 }
         } catch (e: InterruptibleCharSequence.InterruptedRuntimeException) {
@@ -147,6 +156,27 @@ class CopyrightValidator @JvmOverloads constructor(
 
     companion object {
         private val log = LoggerFactory.getLogger(CopyrightValidator::class.java)
+        private val FLAG_PREFIX = Regex("^\\(\\?[a-zA-Z]+\\)")
+
+        private fun narrowToMatch(regex: Regex): Regex {
+            val flags = FLAG_PREFIX.find(regex.pattern)?.value ?: ""
+            var body = regex.pattern.removePrefix(flags)
+            val quantified = body.getOrNull(2)?.let { it in "?+*" } ?: false
+            if (body.startsWith(".*") && !quantified) {
+                body = body.substring(2)
+            }
+            val escapedDot = body.dropLast(2).takeLastWhile { it == '\\' }.length % 2 == 1
+            if (body.endsWith(".*") && !escapedDot) {
+                body = body.dropLast(2)
+            }
+            return try {
+                if (body.isEmpty()) regex else Regex(flags + body, regex.options)
+            } catch (ex: Exception) {
+                log.warn("Can't narrow pattern=${regex.pattern}, using it as is", ex)
+                regex
+            }
+        }
+
         private const val STRING_VALIDATION_TIMEOUT_SEC_DEFAULT: Long = 30
         private const val THREAD_COUNT_DEFAULT = 20
         private const val VALIDATION_TOKEN_LENGTH = 80
