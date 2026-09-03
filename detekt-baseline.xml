@@ -1,0 +1,8 @@
+<?xml version="1.0" ?>
+<!-- The aggregator has no sources of its own; detekt still requires the baseline
+     file its configuration points at to exist. The real baselines are
+     validation/detekt-baseline.xml and wl-tool/detekt-baseline.xml. -->
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues/>
+</SmellBaseline>

@@ -1,0 +1,13 @@
+name: Quality Gates
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  static:
+    # ktlint and detekt need a newer JVM than the JDK 8 the compile and release jobs run
+    # on, so the quality profile gets its own job. Tests are skipped here - they already
+    # run in `Maven Compile & UT`.
+    uses: octopusden/octopus-base/.github/workflows/common-java-maven-build.yml@v2.8.0
+    with:
+      java-version: '11'
+      mvn-parameters: '-P quality -DskipTests'

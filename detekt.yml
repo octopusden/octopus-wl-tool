@@ -1,0 +1,6 @@
+# Repository-specific detekt config, on top of the shipped defaults
+# (buildUponDefaultConfig). See octopus-base/docs/Octopus Kotlin Style Guide.md.
+style:
+  MaxLineLength:
+    # Same limit ktlint enforces via .editorconfig.
+    maxLineLength: 140
