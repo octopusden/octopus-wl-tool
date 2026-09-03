@@ -285,11 +285,14 @@ class FileFilterTest {
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             .setSerializationInclusion(JsonInclude.Include.NON_NULL)
 
-        private fun String.toResourcePath(): Path = this::class.java.getResource(this)
-            ?.toURI()?.toPath() ?: throw IllegalArgumentException("There is '$this' in resources")
+        // this::class.java is String::class.java, and since JDK 9 String lives in the
+        // java.base module, whose getResource only sees resources of that module - so this
+        // resolved to null on every JDK above 8.
+        private fun String.toResourcePath(): Path = FileFilterTest::class.java.getResource(this)
+            ?.toURI()?.toPath() ?: throw IllegalArgumentException("There is no '$this' in resources")
 
         private fun <T> String.loadConfigFromResources(aClass: Class<T>): T {
-            return mapper.readValue(this::class.java.getResource(this), aClass)
+            return mapper.readValue(FileFilterTest::class.java.getResource(this), aClass)
         }
     }
 }
