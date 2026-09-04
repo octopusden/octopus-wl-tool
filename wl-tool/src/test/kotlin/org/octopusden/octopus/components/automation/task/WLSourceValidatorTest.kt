@@ -1,12 +1,17 @@
 package org.octopusden.octopus.components.automation.task
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 import java.io.StringReader
+import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import java.nio.file.Paths
+import kotlin.io.path.createDirectories
 import kotlin.io.path.toPath
+import kotlin.io.path.writeBytes
 
 private const val ORIGIN_LOWERCASE = "brand2all"
 
@@ -154,7 +159,8 @@ internal class WLSourceValidatorTest {
                         brokenRegex = "",
                         problemToken = "someToken",
                         validationProblem = "someToken",
-                        suggestedReplacement = "newToken"
+                        suggestedReplacement = "newToken",
+                        context = " someToken"
                     ),
                     ValidationProblem(
                         line = 7,
@@ -183,7 +189,8 @@ internal class WLSourceValidatorTest {
                         brokenRegex = "",
                         problemToken = "someMethod",
                         validationProblem = "someMethod",
-                        suggestedReplacement = "newMethod"
+                        suggestedReplacement = "newMethod",
+                        context = "... with problems someMethod"
                     )
                 )
             ),
@@ -204,7 +211,53 @@ internal class WLSourceValidatorTest {
         assertEquals(expected.skippedFilesAndFolders.sorted(), actual.skippedFilesAndFolders.sorted())
         assertEquals(expected.fileContentProblems.toSortedMap(), actual.fileContentProblems.toSortedMap())
         assertEquals(expected.fileNameProblems.toSortedMap(), actual.fileNameProblems.toSortedMap())
-        assertEquals(expected.suggestedReplacements.toSortedMap(), expected.suggestedReplacements.toSortedMap())
+        assertEquals(expected.suggestedReplacements.toSortedMap(), actual.suggestedReplacements.toSortedMap())
+    }
+
+    @Test
+    fun `problem in a binary file is reported as a short offset record`(@TempDir reportDir: Path) {
+        val binaryRoot = reportDir.resolve("project").createDirectories()
+        val junk = ByteArray(4096)
+        val run = "X".repeat(200) + "internal-brand2-build" + "Y".repeat(200)
+        val binary = binaryRoot.resolve("sentinel-cli")
+        binary.writeBytes(junk + run.toByteArray(StandardCharsets.US_ASCII) + junk)
+
+        val errorsReport = reportDir.resolve("errors.txt").toFile()
+        WLReportGenerator().printValidationReport(
+            WLSourceValidator(
+                sourceRoot = binaryRoot,
+                validationConfig = getResourceAsPath("/prod-like-config/mapping.json"),
+                filterConfig = filterConfig,
+                forbiddenPatterns = forbiddenPatterns
+            ).validate(),
+            errorsReport,
+            reportDir.resolve("success.txt").toFile(),
+            "1.0"
+        )
+
+        val report = String(errorsReport.readBytes(), StandardCharsets.UTF_8)
+        assertFalse(report.any { it.isISOControl() && it != '\n' && it != '\r' } || report.contains('\uFFFD'),
+            "Report must stay readable text, was $report")
+
+        val records = report.lines().filter { it.startsWith("sentinel-cli:") }
+        assertEquals(1, records.size, "Expected a single record, was $report")
+        val record = records.single()
+        assertTrue(record.length < 200, "Record must be short, was ${record.length} chars: $record")
+        assertEquals(4, record.count { it == '"' }, "Quotes must be balanced: $record")
+        // 4096 bytes of junk + 200 filler chars + "internal-": the offset points at the literal, not at the run
+        assertTrue(record.startsWith("sentinel-cli:offset=4305 "), "Record must locate the hit by offset: $record")
+        assertTrue(record.contains("brand2"), "Record must show the matched literal: $record")
+        assertTrue(record.endsWith("mustn't match rule: \"brand2\""), "Record must name the rule: $record")
+    }
+
+    @Test
+    fun `printable islands of machine code are skipped, string constants are not`() {
+        val bytes = byteArrayOf(0, 0) + "abc".toByteArray() + byteArrayOf(0) +
+                "a string constant".toByteArray() + byteArrayOf(0, 0)
+        val runs = PrintableRunsInputStream(bytes.inputStream())
+
+        assertEquals("a string constant\n", runs.bufferedReader().readText())
+        assertEquals(6L, runs.offsetOf(1, 0))
     }
 
     @Test
