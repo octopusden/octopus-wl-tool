@@ -8,8 +8,12 @@ on:
 
 jobs:
   security:
-    permissions:
-      security-events: write
+    # No `permissions` on this job: at job level the block replaces the set rather than
+    # extending it, so granting only security-events: write would take contents: read
+    # away from the called workflow, which asks for both at its own top level - and a
+    # caller that grants less than the callee requests fails the run at startup, before
+    # any job runs. The example in octopus-base's GitHub Actions Guide has this block;
+    # octopus-test, which actually runs green, does not.
     # Of the three jobs this workflow provides only security/dependency-check is Gradle
     # bound, and it is off by default: codeql uses autobuild, which picks up the Maven
     # build on its own, and trivy scans the filesystem.
