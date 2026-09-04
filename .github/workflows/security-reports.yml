@@ -1,0 +1,19 @@
+name: Security Reports
+
+on:
+  workflow_call:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  security:
+    permissions:
+      security-events: write
+    # Of the three jobs this workflow provides only security/dependency-check is Gradle
+    # bound, and it is off by default: codeql uses autobuild, which picks up the Maven
+    # build on its own, and trivy scans the filesystem.
+    uses: octopusden/octopus-base/.github/workflows/common-java-gradle-security-reports.yml@v2.8.0
+    with:
+      java-version: '11'
+      enable-dependency-check: false
