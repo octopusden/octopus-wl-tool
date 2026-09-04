@@ -211,7 +211,7 @@ internal class WLSourceValidatorTest {
         assertEquals(expected.skippedFilesAndFolders.sorted(), actual.skippedFilesAndFolders.sorted())
         assertEquals(expected.fileContentProblems.toSortedMap(), actual.fileContentProblems.toSortedMap())
         assertEquals(expected.fileNameProblems.toSortedMap(), actual.fileNameProblems.toSortedMap())
-        assertEquals(expected.suggestedReplacements.toSortedMap(), expected.suggestedReplacements.toSortedMap())
+        assertEquals(expected.suggestedReplacements.toSortedMap(), actual.suggestedReplacements.toSortedMap())
     }
 
     @Test

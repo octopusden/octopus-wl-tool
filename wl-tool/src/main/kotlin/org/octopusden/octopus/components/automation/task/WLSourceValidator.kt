@@ -229,7 +229,7 @@ class WLSourceValidator(
                     is Ok -> file.relativizeAgainstSourceRoot() to result.value
                     is Er -> {
                         logger.error("Can't process file=${file.relativizeAgainstSourceRoot()}", result.error)
-                        file to emptyList()
+                        file.relativizeAgainstSourceRoot() to emptyList()
                     }
                 }
             }
@@ -260,9 +260,12 @@ class WLSourceValidator(
 
     private fun processText(text: String, lineNumber: Int): List<ValidationProblem> {
         val validationProblems: MutableList<ValidationProblem> = ArrayList()
+        // tokens come in the order they occur, so walking a cursor keeps a repeated token at its own position
+        var cursor = 0
         text.split().forEach { token ->
-            val startPos = text.indexOf(token)
+            val startPos = text.indexOf(token, cursor).takeIf { it >= 0 } ?: cursor
             val endPos = startPos + token.length
+            cursor = endPos
 
             val result = TextTokenHandler(validationRules, exceptionItems).testTokenAgainstRules(
                 token,
