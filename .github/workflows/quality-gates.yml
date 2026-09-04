@@ -1,0 +1,14 @@
+name: Quality Gates
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  quality:
+    # ktlint, detekt and the jacoco coverage floor. They need a newer JVM than the JDK 8
+    # the compile and release jobs run on, hence the separate job.
+    uses: octopusden/octopus-base/.github/workflows/common-java-maven-build.yml@v2.8.0
+    with:
+      java-version: '11'
+      mvn-parameters: '-P quality'

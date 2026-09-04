@@ -23,20 +23,35 @@ CI (`Maven Compile & UT`) builds on JDK 8; the build and the tests also pass on 
 ## Quality gates
 
 ```bash
-mvn -P quality package            # ktlint + detekt, with the tests
+mvn -P quality package                               # ktlint, detekt, tests, coverage floor
 mvn -P quality generate-test-sources ktlint:format   # fix what ktlint can fix itself
 ```
 
 `ktlint` reads `.editorconfig` (`intellij_idea` code style, `max_line_length = 140`), `detekt`
-reads `detekt.yml` on top of its own defaults. The rules follow
-`octopus-base/docs/Octopus Kotlin Style Guide.md`.
+reads `detekt.yml` on top of its own defaults, and `jacoco` fails the build under **70%** line
+coverage per module — the floor `gradle-quality-plugin` uses for the Gradle repositories. The
+rules follow `octopus-base/docs/Octopus Kotlin Style Guide.md`.
 
 Violations that existed when detekt was introduced are in `*/detekt-baseline.xml`; new code must
 not add entries there. Regenerate with
 `mvn -P quality generate-test-sources detekt:create-baseline`.
 
-The linters are in the `quality` profile, not in the default build: they need a newer JVM than
-the JDK 8 the release runs on. CI activates the profile in the `Quality Gates` workflow on JDK 11.
+All of this lives in the `quality` profile, not in the default build: the plugins need a newer
+JVM than the JDK 8 the release runs on, so CI activates the profile in its own JDK 11 job.
+
+## CI
+
+`Merge Gate` runs on every pull request and aggregates the three gates into one check,
+`gate/merge` — the only check branch protection needs to require:
+
+| Job | What it runs |
+|---|---|
+| `build` | `Maven Compile & UT`: `mvn package` on JDK 8 |
+| `quality` | `Quality Gates`: `mvn package -P quality` on JDK 11 |
+| `security` | `Security Reports`: CodeQL and Trivy (dependency-check is off - it is Gradle bound) |
+
+The three are `workflow_call` workflows, so they run once per pull request, through the gate.
+`Security Reports` additionally runs nightly.
 
 ## Release
 
