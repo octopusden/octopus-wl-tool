@@ -1,0 +1,22 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ImplicitDefaultLocale:FileFilter.kt$FileFilter.Companion$String.format("%02x ", s.read())</ID>
+    <ID>LongParameterList:CopyrightValidator.kt$CopyrightValidator$( timeoutPool: ThreadPoolExecutor, taskPool: ThreadPoolExecutor, semaphore: Semaphore, nLine: Int, string: String, errors: MutableList&lt;ValidationProblem&gt;, )</ID>
+    <ID>MagicNumber:CopyrightValidator.kt$CopyrightValidator$100</ID>
+    <ID>MagicNumber:CopyrightValidator.kt$CopyrightValidator$3</ID>
+    <ID>MagicNumber:CopyrightValidator.kt$CopyrightValidator$5</ID>
+    <ID>MagicNumber:FileFilter.kt$FileFilter.Companion$8</ID>
+    <ID>MaxLineLength:CopyrightValidatorTest.kt$CopyrightValidatorTest$"(?i).*(company|vendor(?!-id)|providerName|license(?!-maven-plugin)|author|created|legal|product|trademark).*[^\\./]octopus\\s*den(?!group-parent).*"</ID>
+    <ID>MemberNameEqualsClassName:FileFilterTest.kt$FileFilterTest$@Test fun fileFilterTest()</ID>
+    <ID>SwallowedException:CopyrightValidator.kt$CopyrightValidator$e: InterruptibleCharSequence.InterruptedRuntimeException</ID>
+    <ID>SwallowedException:CopyrightValidator.kt$CopyrightValidator$e: TimeoutException</ID>
+    <ID>SwallowedException:FileFilter.kt$FileFilter.Companion$ex: Throwable</ID>
+    <ID>ThrowingExceptionsWithoutMessageOrCause:FileFilter.kt$FileFilter.Companion$IllegalStateException()</ID>
+    <ID>TooGenericExceptionCaught:FileFilter.kt$FileFilter.Companion$ex: Throwable</ID>
+    <ID>TooManyFunctions:FileFilter.kt$FileFilter$Companion</ID>
+    <ID>UnusedPrivateMember:ForbiddenFileNameValidatorTest.kt$ForbiddenFileNameValidatorTest$private fun forbiddenFileNameValidatorParameters(): Stream&lt;Arguments&gt;</ID>
+    <ID>UseCheckOrError:FileFilter.kt$FileFilter.Companion$throw IllegalStateException()</ID>
+  </CurrentIssues>
+</SmellBaseline>

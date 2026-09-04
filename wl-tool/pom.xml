@@ -10,6 +10,7 @@
     <modelVersion>4.0.0</modelVersion>
     <artifactId>wl-tool</artifactId>
     <name>Octopus WL Tool</name>
+    <description>Command line white labeling validator: applies the wl-config rules to a project or distribution and generates the findings report.</description>
     <build>
         <plugins>
             <plugin>

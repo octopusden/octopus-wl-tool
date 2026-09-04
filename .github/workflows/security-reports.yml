@@ -1,0 +1,25 @@
+name: Security Reports
+
+on:
+  workflow_call:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  security:
+    # Both scopes, spelled out: a job-level block replaces the permission set instead of
+    # extending it, so `security-events: write` on its own would take away the
+    # contents: read the called workflow declares at its own top level - and a caller
+    # that grants less than the callee asks for is rejected at startup, before any job
+    # runs. That is what the example in octopus-base's GitHub Actions Guide does.
+    permissions:
+      contents: read
+      security-events: write
+    # Of the three jobs this workflow provides only security/dependency-check is Gradle
+    # bound, and it is off by default: codeql uses autobuild, which picks up the Maven
+    # build on its own, and trivy scans the filesystem.
+    uses: octopusden/octopus-base/.github/workflows/common-java-gradle-security-reports.yml@v2.8.0
+    with:
+      java-version: '11'
+      enable-dependency-check: false

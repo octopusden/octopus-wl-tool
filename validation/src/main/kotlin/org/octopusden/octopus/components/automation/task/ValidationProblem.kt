@@ -7,5 +7,5 @@ data class ValidationProblem(
     val brokenRegex: String,
     val problemToken: String,
     val validationProblem: String,
-    val suggestedReplacement: String
+    val suggestedReplacement: String,
 )
