@@ -7,9 +7,10 @@ on:
       - main
   workflow_dispatch:
 
+# Least privilege: only the security job gets security-events, and it lists every
+# scope it needs - a job-level block replaces the set rather than extending it.
 permissions:
   contents: read
-  security-events: write
 
 jobs:
   build:
@@ -19,6 +20,9 @@ jobs:
     uses: ./.github/workflows/quality-gates.yml
 
   security:
+    permissions:
+      contents: read
+      security-events: write
     uses: ./.github/workflows/security-reports.yml
 
   gate-merge:
