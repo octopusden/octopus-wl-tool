@@ -261,9 +261,9 @@ class WLSourceValidator(
         val validationProblems: MutableList<ValidationProblem> = ArrayList()
         // tokens come in the order they occur, so walking a cursor keeps a repeated token at its own position
         var cursor = 0
-        // rules are matched against a token whose exception items are masked out, so the raw line would
-        // point at a rule occurrence inside a permitted item; masked on first need only
-        var maskedText: String? = null
+        // rules are matched against a token whose exception items are masked out, so a position found in
+        // the raw line could point at a rule occurrence inside a permitted item
+        val masked = maskExceptions(text)
         text.split().forEach { token ->
             val startPos = text.indexOf(token, cursor).takeIf { it >= 0 } ?: cursor
             val endPos = startPos + token.length
@@ -278,7 +278,6 @@ class WLSourceValidator(
             if (result != null) {
                 // a problem is located by the rule that matched, not by the token around it: in a binary a
                 // single token can be kilobytes of string table, and the position is all a report entry has
-                val masked = maskedText ?: maskExceptions(text).also { maskedText = it }
                 val ruleStart = masked.indexOf(result.validationProblem, startPos, ignoreCase = true)
                 validationProblems.add(
                     if (ruleStart >= 0) {

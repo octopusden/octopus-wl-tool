@@ -6,9 +6,6 @@
 
 # Test-Driven Development (strict)
 
-Not a preference. No production change lands without having been driven by a
-test.
-
 - Write the failing test first. Run it. See it fail, and fail for the reason
   the change exists — a test that has never been red proves nothing.
 - Then write the smallest code that makes it pass. Refactor only while green.
