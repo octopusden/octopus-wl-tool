@@ -18,8 +18,11 @@ data class ValidationProblem(
 )
 
 private const val CONTEXT_LENGTH = 15
-private const val MAX_MATCH_LENGTH = 80
+private const val MAX_MATCH_LENGTH = 44
 private const val ELLIPSIS = "..."
+
+/** Longest excerpt [withContext] can produce. A report must not cap below it, or it truncates twice. */
+const val MAX_EXCERPT_LENGTH = MAX_MATCH_LENGTH + 2 * CONTEXT_LENGTH + 2 * 3
 
 /**
  * The matched fragment plus a bit of what surrounds it: enough to recognize what was found, short enough

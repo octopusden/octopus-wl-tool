@@ -44,7 +44,6 @@ public class WLReportGenerator() {
     companion object {
         private val logger = LoggerFactory.getLogger(WLReportGenerator::class.java)
 
-        private const val MAX_TOKEN_LENGTH = 80
         private const val MAX_RULE_LENGTH = 60
         private const val ELLIPSIS = "..."
         private val UNREADABLE = Regex("[\\p{Cntrl}\\uFFFD\"]+")
@@ -58,7 +57,7 @@ public class WLReportGenerator() {
             }
             val rule = item.brokenRegex.ifEmpty { item.validationProblem }
             val found = item.context.ifEmpty { item.problemToken }
-            return "$file:$location \"${found.readable(MAX_TOKEN_LENGTH)}\" mustn't match rule: \"${rule.readable(MAX_RULE_LENGTH)}\""
+            return "$file:$location \"${found.readable(MAX_EXCERPT_LENGTH)}\" mustn't match rule: \"${rule.readable(MAX_RULE_LENGTH)}\""
         }
 
         private fun String.readable(limit: Int): String {

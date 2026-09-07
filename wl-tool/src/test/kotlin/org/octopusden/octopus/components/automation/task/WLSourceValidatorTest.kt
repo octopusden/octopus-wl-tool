@@ -12,6 +12,7 @@ import java.nio.file.Paths
 import kotlin.io.path.createDirectories
 import kotlin.io.path.toPath
 import kotlin.io.path.writeBytes
+import kotlin.io.path.writeText
 
 private const val ORIGIN_LOWERCASE = "brand2all"
 
@@ -248,6 +249,20 @@ internal class WLSourceValidatorTest {
         assertTrue(record.startsWith("sentinel-cli:offset=4305 "), "Record must locate the hit by offset: $record")
         assertTrue(record.contains("brand2"), "Record must show the matched literal: $record")
         assertTrue(record.endsWith("mustn't match rule: \"brand2\""), "Record must name the rule: $record")
+    }
+
+    @Test
+    fun `a rule occurrence inside a permitted exception item is not the reported position`(@TempDir dir: Path) {
+        // "brand2u" is an exception, so the hit is the standalone "brand2" after it, at index 8 - not the
+        // "brand2" inside the permitted item at index 0
+        val file = dir.resolve("tokens.txt")
+        file.writeText("brand2u-brand2\n")
+
+        val problems = prodLikeValidator.checkFileContent(file).second
+
+        assertEquals(1, problems.size, "Expected a single problem, was $problems")
+        assertEquals(8, problems.single().startPosition, "Position must skip the permitted item: $problems")
+        assertEquals("brand2u-brand2", problems.single().context)
     }
 
     @Test

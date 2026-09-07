@@ -7,6 +7,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.github.javaparser.JavaParser
 import com.github.javaparser.ast.nodeTypes.NodeWithIdentifier
+import org.octopusden.octopus.tools.wl.PatternCalculator
 import org.octopusden.octopus.tools.wl.validation.validator.CopyrightValidator
 import org.octopusden.octopus.util.FileFilter
 import org.slf4j.LoggerFactory
@@ -33,6 +34,7 @@ class WLSourceValidator(
     private val copyrightValidator:CopyrightValidator
     private val props : WLProperties
     private val exceptionItems : List<String>
+    private val exceptionsPattern : Regex
     private val restrictedItems : List<String>
 
     init {
@@ -40,6 +42,7 @@ class WLSourceValidator(
 
         props  = objectMapper.readValue(forbiddenPatterns.toFile())
         exceptionItems = props.exceptions
+        exceptionsPattern = Regex(PatternCalculator().calculate(exceptionItems))
         restrictedItems = listOf(props.restricted)
         copyrightValidator = CopyrightValidator(props.contains, props.patterns)
         FileReader(validationConfig.toFile()).use {
@@ -162,10 +165,7 @@ class WLSourceValidator(
             val runs = PrintableRunsInputStream(source)
             runs.bufferedReader().useLines { lines ->
                 lines.withIndex().firstNotNullOfOrNull { (index, line) ->
-                    // same-length mask, unlike TextTokenHandler.PLACEHOLDER: offsets must stay exact
-                    val text = exceptionItems.fold(line.lowercase()) { result, element ->
-                        result.replace(element, "#".repeat(element.length))
-                    }
+                    val text = maskExceptions(line.lowercase())
                     restrictedItems.firstNotNullOfOrNull { restrictedItem ->
                         val position = text.indexOf(restrictedItem)
                         if (position >= 0) {
@@ -261,6 +261,9 @@ class WLSourceValidator(
         val validationProblems: MutableList<ValidationProblem> = ArrayList()
         // tokens come in the order they occur, so walking a cursor keeps a repeated token at its own position
         var cursor = 0
+        // rules are matched against a token whose exception items are masked out, so the raw line would
+        // point at a rule occurrence inside a permitted item; masked on first need only
+        var maskedText: String? = null
         text.split().forEach { token ->
             val startPos = text.indexOf(token, cursor).takeIf { it >= 0 } ?: cursor
             val endPos = startPos + token.length
@@ -275,7 +278,8 @@ class WLSourceValidator(
             if (result != null) {
                 // a problem is located by the rule that matched, not by the token around it: in a binary a
                 // single token can be kilobytes of string table, and the position is all a report entry has
-                val ruleStart = text.indexOf(result.validationProblem, startPos, ignoreCase = true)
+                val masked = maskedText ?: maskExceptions(text).also { maskedText = it }
+                val ruleStart = masked.indexOf(result.validationProblem, startPos, ignoreCase = true)
                 validationProblems.add(
                     if (ruleStart >= 0) {
                         val ruleEnd = ruleStart + result.validationProblem.length
@@ -292,6 +296,9 @@ class WLSourceValidator(
         }
         return validationProblems
     }
+
+    /** Same-length mask, so a position found in the masked text is a position in the original. */
+    private fun maskExceptions(text: String) = exceptionsPattern.replace(text) { "#".repeat(it.value.length) }
 
     private fun processStructuredFormat(
         objectMapper: ObjectMapper,
