@@ -50,29 +50,15 @@ public class WLReportGenerator() {
         private val UNREADABLE = Regex("[\\p{Cntrl}\\uFFFD\"]+")
 
         internal fun record(file: String, item: ValidationProblem): String {
-            val location = if (item.binary) "offset=${item.byteOffset}" else "${item.line},${item.startPosition}"
+            // a binary finding has no line to point at, the byte offset is its only locator
+            val location = if (item.byteOffset >= 0) {
+                "offset=${item.byteOffset}"
+            } else {
+                "${item.line},${item.startPosition}"
+            }
             val rule = item.brokenRegex.ifEmpty { item.validationProblem }
             val found = item.context.ifEmpty { item.problemToken }
-            return "$file:$location \"${excerpt(found, rule)}\" mustn't match rule: \"${rule.readable(MAX_RULE_LENGTH)}\""
-        }
-
-        /**
-         * Keeps the matched literal visible: a token can be the whole content of a binary run, and cutting
-         * it from the start is exactly what hid the real finding in the report.
-         */
-        private fun excerpt(token: String, rule: String): String {
-            val readable = token.readable(Int.MAX_VALUE)
-            if (readable.length <= MAX_TOKEN_LENGTH) {
-                return readable
-            }
-            val hit = readable.indexOf(rule, ignoreCase = true)
-            if (hit < 0) {
-                return readable.readable(MAX_TOKEN_LENGTH)
-            }
-            val start = (hit - (MAX_TOKEN_LENGTH - rule.length.coerceAtMost(MAX_TOKEN_LENGTH)) / 2)
-                .coerceIn(0, readable.length - MAX_TOKEN_LENGTH)
-            val end = (start + MAX_TOKEN_LENGTH).coerceAtMost(readable.length)
-            return (if (start > 0) ELLIPSIS else "") + readable.substring(start, end) + (if (end < readable.length) ELLIPSIS else "")
+            return "$file:$location \"${found.readable(MAX_TOKEN_LENGTH)}\" mustn't match rule: \"${rule.readable(MAX_RULE_LENGTH)}\""
         }
 
         private fun String.readable(limit: Int): String {

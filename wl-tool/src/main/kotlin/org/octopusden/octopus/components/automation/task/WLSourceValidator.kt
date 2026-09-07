@@ -58,8 +58,9 @@ class WLSourceValidator(
             val binary = isBinary(file)
             val checkFileResult = checkFileContentWithDoubleCheck(file, binary)
             val copyRightValidationResult = if (file.isRegularFile()) {
+                val sizeKB = file.fileSize().div(1000)
                 if (logger.isTraceEnabled) {
-                    logger.trace("Size $file: ${file.fileSize().div(1000)}KB")
+                    logger.trace("Size $file: ${sizeKB}KB")
                 }
                 validateCopyright(file, binary)
             } else {
@@ -134,21 +135,19 @@ class WLSourceValidator(
         if (binary) {
             return filePath.relativizeAgainstSourceRoot() to checkBinaryContentLight(filePath)
         }
-        val validationProblems = run {
-            val initialText = filePath.toFile().readText().lowercase()
-            val text = exceptionItems.fold(initialText) { result, element ->
-                result.replace(
-                    element,
-                    TextTokenHandler.PLACEHOLDER
-                )
+        val initialText = filePath.toFile().readText().lowercase()
+        val text = exceptionItems.fold(initialText) { result, element ->
+            result.replace(
+                element,
+                TextTokenHandler.PLACEHOLDER
+            )
+        }
+        val validationProblems = restrictedItems.mapNotNull { restrictedItem ->
+            if (text.contains(restrictedItem)) {
+                ValidationProblem(-1, -1, -1, "", restrictedItem, restrictedItem, "UNKNOWN_REPLACEMENT")
+            } else {
+                null
             }
-            restrictedItems.map { restrictedItem ->
-                if (text.lowercase().contains(restrictedItem)) {
-                    ValidationProblem(-1, -1, -1, "", restrictedItem, restrictedItem, "UNKNOWN_REPLACEMENT")
-                } else {
-                    null
-                }
-            }.filterNotNull()
         }
         return filePath.relativizeAgainstSourceRoot() to validationProblems
     }
@@ -165,14 +164,14 @@ class WLSourceValidator(
                 lines.withIndex().firstNotNullOfOrNull { (index, line) ->
                     // same-length mask, unlike TextTokenHandler.PLACEHOLDER: offsets must stay exact
                     val text = exceptionItems.fold(line.lowercase()) { result, element ->
-                        result.replace(element, EXCEPTION_MASK.repeat(element.length))
+                        result.replace(element, "#".repeat(element.length))
                     }
                     restrictedItems.firstNotNullOfOrNull { restrictedItem ->
                         val position = text.indexOf(restrictedItem)
                         if (position >= 0) {
                             ValidationProblem(
                                 -1, -1, -1, "", restrictedItem, restrictedItem, "UNKNOWN_REPLACEMENT",
-                                byteOffset = runs.offsetOf(index + 1, position), binary = true
+                                byteOffset = runs.offsetOf(index + 1, position)
                             )
                         } else {
                             null
@@ -377,7 +376,6 @@ class WLSourceValidator(
         private const val MAX_FILE_SIZE = 10000000
         private const val BINARY_PROBE_SIZE = 8192
         private const val ZERO_BYTE: Byte = 0
-        private const val EXCEPTION_MASK = "#"
 
         /**
          * Content-based check, on purpose: the files this matters for (compiled executables) often have
@@ -506,21 +504,18 @@ data class Er(val error: Throwable) : Outcome<Nothing>()
  * byte offset every run starts at. Lets the line-based validators work on a binary without giant lines,
  * without meaningless line numbers and without reading the file into memory.
  *
- * Runs shorter than [minRunLength] are dropped: in machine code printable bytes turn up by accident all
+ * Runs shorter than [MIN_RUN_LENGTH] are dropped: in machine code printable bytes turn up by accident all
  * the time, and a short rule then matches instruction bytes, while real string constants are longer. Same idea as
  * `strings -n`.
  *
- * ponytail: two known ceilings - a forbidden literal shorter than [minRunLength] standing alone between
+ * ponytail: two known ceilings - a forbidden literal shorter than [MIN_RUN_LENGTH] standing alone between
  * non-printable bytes is not seen, and runs are ASCII-only, so a UTF-8 encoded non-ASCII literal is not
  * seen either. Lower the threshold or decode runs as UTF-8 if such a literal ever has to be caught.
  */
-internal class PrintableRunsInputStream(
-    source: InputStream,
-    private val minRunLength: Int = MIN_RUN_LENGTH
-) : FilterInputStream(source) {
+internal class PrintableRunsInputStream(source: InputStream) : FilterInputStream(source) {
     private var runOffsets = LongArray(INITIAL_RUNS)
     private var runCount = 0
-    private val pending = ByteArray(minRunLength)
+    private val pending = ByteArray(MIN_RUN_LENGTH)
     private var pendingLength = 0
     private var pendingIndex = 0
     private var inRun = false
@@ -555,7 +550,7 @@ internal class PrintableRunsInputStream(
                     runStart = position - 1
                 }
                 pending[pendingLength++] = byte.toByte()
-                if (pendingLength == minRunLength) {
+                if (pendingLength == MIN_RUN_LENGTH) {
                     inRun = true
                     addRunOffset(runStart)
                     pendingIndex = 1
@@ -605,8 +600,7 @@ internal class PrintableRunsInputStream(
         line = -1,
         startPosition = -1,
         endPosition = -1,
-        byteOffset = offsetOf(problem.line, problem.startPosition),
-        binary = true
+        byteOffset = offsetOf(problem.line, problem.startPosition)
     )
 
     companion object {

@@ -9,11 +9,10 @@ data class ValidationProblem(
     val validationProblem: String,
     val suggestedReplacement: String,
     /**
-     * Byte offset of the problem in the source file, -1 when unknown.
-     * Binary files have no meaningful lines, so the offset is the only usable position there.
+     * Byte offset of the problem in the source file, -1 when unknown. Set for problems found in a binary,
+     * which has no meaningful lines, so the offset is the only usable position there.
      */
     val byteOffset: Long = -1,
-    val binary: Boolean = false,
     /** [problemToken] surrounded by a bit of the text it was found in, empty when that text is unknown. */
     val context: String = ""
 )

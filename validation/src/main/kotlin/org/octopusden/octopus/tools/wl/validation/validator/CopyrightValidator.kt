@@ -161,8 +161,7 @@ class CopyrightValidator @JvmOverloads constructor(
         private fun narrowToMatch(regex: Regex): Regex {
             val flags = FLAG_PREFIX.find(regex.pattern)?.value ?: ""
             var body = regex.pattern.removePrefix(flags)
-            val quantified = body.getOrNull(2)?.let { it in "?+*" } ?: false
-            if (body.startsWith(".*") && !quantified) {
+            if (body.startsWith(".*")) {
                 body = body.substring(2)
             }
             val escapedDot = body.dropLast(2).takeLastWhile { it == '\\' }.length % 2 == 1
