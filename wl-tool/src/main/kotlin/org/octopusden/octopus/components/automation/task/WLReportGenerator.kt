@@ -2,6 +2,7 @@ package org.octopusden.octopus.components.automation.task
 
 import org.slf4j.LoggerFactory
 import java.io.File
+import java.nio.file.Path
 
 public class WLReportGenerator() {
 
@@ -14,7 +15,7 @@ public class WLReportGenerator() {
         if (validationResult.isNotEmpty()) {
             logger.info("Publishing report to $errorsReportFile")
             errorsReportFile.printWriter().use { out ->
-                logger.info("Found ${validationResult.fileNameProblems} file items & ${validationResult.fileContentProblems} source items")
+                logger.info("Found ${validationResult.fileNameProblems.size} file items & ${validationResult.fileContentProblems.size} source items")
                 out.println("Version $version")
 
                 if (validationResult.fileNameProblems.isNotEmpty()) {
@@ -24,15 +25,12 @@ public class WLReportGenerator() {
                     }
                 }
                 out.println("\n=========== Content Validation Errors  =======================\n")
-                validationResult.fileContentProblems.forEach { file, v ->
-                    out.println("\n======== $file ====\n")
+                validationResult.fileContentProblems.forEach { file, problems ->
+                    val reportedFile = file.forReport()
+                    out.println("\n======== $reportedFile ====\n")
 
-                    v.forEach { item ->
-                        if (item.brokenRegex.isNotEmpty()) {
-                            out.println("line=${item.line} \"${item.validationProblem.trim()}\" mustn't match reqexp: \"${item.brokenRegex}")
-                        } else {
-                            out.println("$file:${item.line},${item.startPosition} \"${item.problemToken}\" \"${item.validationProblem} ")
-                        }
+                    problems.forEach { item ->
+                        out.println(record(reportedFile, item))
                     }
                 }
             }
@@ -45,5 +43,28 @@ public class WLReportGenerator() {
 
     companion object {
         private val logger = LoggerFactory.getLogger(WLReportGenerator::class.java)
+
+        private const val MAX_RULE_LENGTH = 60
+        private const val ELLIPSIS = "..."
+        private val UNREADABLE = Regex("[\\p{Cntrl}\\uFFFD\"]+")
+
+        internal fun record(file: String, item: ValidationProblem): String {
+            // a binary finding has no line to point at, the byte offset is its only locator
+            val location = if (item.byteOffset >= 0) {
+                "offset=${item.byteOffset}"
+            } else {
+                "${item.line},${item.startPosition}"
+            }
+            val rule = item.brokenRegex.ifEmpty { item.validationProblem }
+            val found = item.context.ifEmpty { item.problemToken }
+            return "$file:$location \"${found.readable(MAX_EXCERPT_LENGTH)}\" mustn't match rule: \"${rule.readable(MAX_RULE_LENGTH)}\""
+        }
+
+        private fun String.readable(limit: Int): String {
+            val cleaned = replace(UNREADABLE, " ").trim()
+            return if (cleaned.length <= limit) cleaned else cleaned.take(limit - ELLIPSIS.length) + ELLIPSIS
+        }
+
+        private fun Path.forReport() = toString().replace('\\', '/')
     }
 }
