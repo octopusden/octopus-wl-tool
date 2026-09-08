@@ -14,6 +14,7 @@
     <ID>SwallowedException:CopyrightValidator.kt$CopyrightValidator$e: TimeoutException</ID>
     <ID>SwallowedException:FileFilter.kt$FileFilter.Companion$ex: Throwable</ID>
     <ID>ThrowingExceptionsWithoutMessageOrCause:FileFilter.kt$FileFilter.Companion$IllegalStateException()</ID>
+    <ID>TooGenericExceptionCaught:CopyrightValidator.kt$CopyrightValidator.Companion$ex: Exception</ID>
     <ID>TooGenericExceptionCaught:FileFilter.kt$FileFilter.Companion$ex: Throwable</ID>
     <ID>TooManyFunctions:FileFilter.kt$FileFilter$Companion</ID>
     <ID>UnusedPrivateMember:ForbiddenFileNameValidatorTest.kt$ForbiddenFileNameValidatorTest$private fun forbiddenFileNameValidatorParameters(): Stream&lt;Arguments&gt;</ID>
