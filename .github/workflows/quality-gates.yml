@@ -4,6 +4,9 @@ on:
   workflow_call:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   quality:
     # ktlint, detekt and the jacoco coverage floor. They need a newer JVM than the JDK 8

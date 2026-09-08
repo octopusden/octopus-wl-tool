@@ -6,6 +6,11 @@ on:
     types:
       - completed
 
+# The registration itself runs on OCTOPUS_GITHUB_TOKEN; GITHUB_TOKEN is only used to
+# resolve which version the release built, which is a read.
+permissions:
+  contents: read
+
 jobs:
   build:
     uses: octopusden/octopus-base/.github/workflows/common-check-and-register-release.yml@v3.0.0
