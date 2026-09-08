@@ -230,10 +230,21 @@
                                                 <limit>
                                                     <!-- 70%: the aggregated line-coverage floor
                                                          gradle-quality-plugin uses. Today the
-                                                         modules sit at 94% and 79%. -->
+                                                         modules sit at 93% and 82%. -->
                                                     <counter>LINE</counter>
                                                     <value>COVEREDRATIO</value>
                                                     <minimum>0.70</minimum>
+                                                </limit>
+                                                <limit>
+                                                    <!-- Branches matter more than lines for code
+                                                         that is mostly predicates and thresholds:
+                                                         a line runs with either outcome of an
+                                                         `if`, a branch does not. 60% because
+                                                         wl-tool sits at 64% today - raise it as
+                                                         the tests pin down more cases. -->
+                                                    <counter>BRANCH</counter>
+                                                    <value>COVEREDRATIO</value>
+                                                    <minimum>0.60</minimum>
                                                 </limit>
                                             </limits>
                                         </rule>
