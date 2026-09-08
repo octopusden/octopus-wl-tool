@@ -1,8 +1,8 @@
 package org.octopusden.octopus.tools.wl.validation.validator
 
-import org.octopusden.octopus.components.automation.task.ValidationProblem
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import org.octopusden.octopus.components.automation.task.ValidationProblem
 import java.nio.file.Files
 import kotlin.io.path.inputStream
 import kotlin.io.path.toPath
@@ -10,16 +10,16 @@ import kotlin.io.path.toPath
 internal class CopyrightValidatorTest {
 
     private val copyrightValidator = CopyrightValidator(
-            listOf("octopus"),
-            listOf(
-                "(?i).*(\\(c\\)|copyright).*octopus\\s*den.*",
-                "(?i).*octopus\\s*den.*rights.+reserved.*",
-                "(?i).*(octopus\\s*den\\s+(ltd|Corp|Utilities)).*",
-                "(?i).*(company|vendor(?!-id)|providerName|license(?!-maven-plugin)|author|created|legal|product|trademark).*[^\\./]octopus\\s*den(?!group-parent).*",
-                "(?i).*url.*=.*octopus\\s*den.*(\\.org).*",
-                ".*OctopusDen.*",
-                ".*Implementation-Vendor:\\s.*[Oo]ctopus.*"
-            ).map { it.toRegex() }
+        listOf("octopus"),
+        listOf(
+            "(?i).*(\\(c\\)|copyright).*octopus\\s*den.*",
+            "(?i).*octopus\\s*den.*rights.+reserved.*",
+            "(?i).*(octopus\\s*den\\s+(ltd|Corp|Utilities)).*",
+            "(?i).*(company|vendor(?!-id)|providerName|license(?!-maven-plugin)|author|created|legal|product|trademark).*[^\\./]octopus\\s*den(?!group-parent).*",
+            "(?i).*url.*=.*octopus\\s*den.*(\\.org).*",
+            ".*OctopusDen.*",
+            ".*Implementation-Vendor:\\s.*[Oo]ctopus.*",
+        ).map { it.toRegex() },
     )
 
     @Test
@@ -63,6 +63,5 @@ internal class CopyrightValidatorTest {
         return results
     }
 
-    private fun fileName2Path(file: String) =
-        CopyrightValidatorTest::class.java.getResource("/$file").toURI().toPath()
+    private fun fileName2Path(file: String) = CopyrightValidatorTest::class.java.getResource("/$file").toURI().toPath()
 }

@@ -15,7 +15,7 @@ class CopyrightValidator @JvmOverloads constructor(
     private val contains: List<String>,
     patterns: List<Regex>,
     private val stringValidationTimeoutSec: Long = STRING_VALIDATION_TIMEOUT_SEC_DEFAULT,
-    private val threadCount: Int = THREAD_COUNT_DEFAULT
+    private val threadCount: Int = THREAD_COUNT_DEFAULT,
 ) {
     /**
      * Matched with surrounding `.*` dropped, reported as configured. That `.*` makes the match group cover
@@ -25,44 +25,42 @@ class CopyrightValidator @JvmOverloads constructor(
      */
     private val patterns = patterns.map { narrowToMatch(it) to it.pattern }
 
-    fun validate(content: InputStream): List<ValidationProblem> {
-        return content.bufferedReader().use { bufferedReader ->
+    fun validate(content: InputStream): List<ValidationProblem> = content.bufferedReader().use { bufferedReader ->
 
-            val taskPool = Executors.newFixedThreadPool(threadCount) as ThreadPoolExecutor
-            val timeoutPool = Executors.newFixedThreadPool(threadCount) as ThreadPoolExecutor
-            val permits = threadCount * 5
-            val semaphore = Semaphore(permits, true)
-            log.trace("Thread Pool size $threadCount")
+        val taskPool = Executors.newFixedThreadPool(threadCount) as ThreadPoolExecutor
+        val timeoutPool = Executors.newFixedThreadPool(threadCount) as ThreadPoolExecutor
+        val permits = threadCount * 5
+        val semaphore = Semaphore(permits, true)
+        log.trace("Thread Pool size $threadCount")
 
-            val containsPhrases = contains.joinToString()
-            val errors = mutableListOf<ValidationProblem>()
-            var lineNumber = 0
-            var line = bufferedReader.readLine()
+        val containsPhrases = contains.joinToString()
+        val errors = mutableListOf<ValidationProblem>()
+        var lineNumber = 0
+        var line = bufferedReader.readLine()
 
-            while (line != null) {
-                lineNumber += 1
+        while (line != null) {
+            lineNumber += 1
 
-                log.debug("Check line for contains.any($containsPhrases), line $lineNumber")
-                if (contains.isEmpty() || contains.any { line.contains(it, true) }) {
-                    log.debug("Submit validation, line $lineNumber")
-                    semaphore.acquire()
-                    submit(timeoutPool, taskPool, semaphore, lineNumber, line, errors)
-                }
-
-                line = bufferedReader.readLine()
+            log.debug("Check line for contains.any($containsPhrases), line $lineNumber")
+            if (contains.isEmpty() || contains.any { line.contains(it, true) }) {
+                log.debug("Submit validation, line $lineNumber")
+                semaphore.acquire()
+                submit(timeoutPool, taskPool, semaphore, lineNumber, line, errors)
             }
 
-            while (semaphore.availablePermits() < permits) {
-                log.trace("Wait for shutdown")
-                TimeUnit.MILLISECONDS.sleep(100)
-            }
-
-            timeoutPool.shutdown()
-            taskPool.shutdown()
-
-            log.info("Scanned $lineNumber strings")
-            errors
+            line = bufferedReader.readLine()
         }
+
+        while (semaphore.availablePermits() < permits) {
+            log.trace("Wait for shutdown")
+            TimeUnit.MILLISECONDS.sleep(100)
+        }
+
+        timeoutPool.shutdown()
+        taskPool.shutdown()
+
+        log.info("Scanned $lineNumber strings")
+        errors
     }
 
     private fun submit(
@@ -71,7 +69,7 @@ class CopyrightValidator @JvmOverloads constructor(
         semaphore: Semaphore,
         nLine: Int,
         string: String,
-        errors: MutableList<ValidationProblem>
+        errors: MutableList<ValidationProblem>,
     ) {
         timeoutPool.submit {
             val start = CountDownLatch(1)
@@ -98,7 +96,7 @@ class CopyrightValidator @JvmOverloads constructor(
         start: CountDownLatch,
         nLine: Int,
         string: String,
-        errors: MutableList<ValidationProblem>
+        errors: MutableList<ValidationProblem>,
     ) = taskPool.submit {
         start.countDown()
         var validationProblem: ValidationProblem? = null
@@ -119,9 +117,14 @@ class CopyrightValidator @JvmOverloads constructor(
                     log.debug("Validation error, line: $nLine")
                     val problemToken = wrongString.shortString()
                     validationProblem = ValidationProblem(
-                        nLine, matchResult.start(), matchResult.end(),
-                        configuredPattern, problemToken, problemToken, "",
-                        context = string.withContext(matchResult.start(), matchResult.end())
+                        nLine,
+                        matchResult.start(),
+                        matchResult.end(),
+                        configuredPattern,
+                        problemToken,
+                        problemToken,
+                        "",
+                        context = string.withContext(matchResult.start(), matchResult.end()),
                     )
                 }
         } catch (e: InterruptibleCharSequence.InterruptedRuntimeException) {
@@ -131,13 +134,13 @@ class CopyrightValidator @JvmOverloads constructor(
                 nLine, 0, string.length - 1,
                 "", string, "Validation interrupted by timeout", ""
             )
-            */
+             */
         } finally {
             validationProblem?.let { validationProblemValue ->
                 log.trace("Add validation problem: $validationProblemValue")
                 synchronized(errors) {
                     errors.add(
-                        validationProblemValue
+                        validationProblemValue,
                     )
                 }
             }
@@ -152,7 +155,6 @@ class CopyrightValidator @JvmOverloads constructor(
             "${this.substring(0, VALIDATION_TOKEN_LENGTH - 3)}..."
         }
     }
-
 
     companion object {
         private val log = LoggerFactory.getLogger(CopyrightValidator::class.java)

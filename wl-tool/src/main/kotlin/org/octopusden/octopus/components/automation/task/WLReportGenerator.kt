@@ -4,24 +4,21 @@ import org.slf4j.LoggerFactory
 import java.io.File
 import java.nio.file.Path
 
-public class WLReportGenerator() {
+public class WLReportGenerator {
 
-    fun printValidationReport(
-        validationResult: ProjectValidationResult,
-        errorsReportFile: File,
-        successReportFile: File,
-        version: String
-    ) {
+    fun printValidationReport(validationResult: ProjectValidationResult, errorsReportFile: File, successReportFile: File, version: String) {
         if (validationResult.isNotEmpty()) {
             logger.info("Publishing report to $errorsReportFile")
             errorsReportFile.printWriter().use { out ->
-                logger.info("Found ${validationResult.fileNameProblems.size} file items & ${validationResult.fileContentProblems.size} source items")
+                logger.info(
+                    "Found ${validationResult.fileNameProblems.size} file items & ${validationResult.fileContentProblems.size} source items",
+                )
                 out.println("Version $version")
 
                 if (validationResult.fileNameProblems.isNotEmpty()) {
                     out.println("\n===========File renaming =======================\n")
                     validationResult.fileNameProblems.forEach { old, new ->
-                        out.println("Rename ${old} -> ${new}")
+                        out.println("Rename $old -> $new")
                     }
                 }
                 out.println("\n=========== Content Validation Errors  =======================\n")

@@ -14,7 +14,7 @@ data class ValidationProblem(
      */
     val byteOffset: Long = -1,
     /** [problemToken] surrounded by a bit of the text it was found in, empty when that text is unknown. */
-    val context: String = ""
+    val context: String = "",
 )
 
 private const val CONTEXT_LENGTH = 15
@@ -37,5 +37,5 @@ fun String.withContext(start: Int, end: Int): String {
         if (it.length <= MAX_MATCH_LENGTH) it else it.take(MAX_MATCH_LENGTH - ELLIPSIS.length) + ELLIPSIS
     }
     return (if (from > 0) ELLIPSIS else "") + substring(from, matchStart) +
-            match + substring(matchEnd, to) + (if (to < length) ELLIPSIS else "")
+        match + substring(matchEnd, to) + (if (to < length) ELLIPSIS else "")
 }

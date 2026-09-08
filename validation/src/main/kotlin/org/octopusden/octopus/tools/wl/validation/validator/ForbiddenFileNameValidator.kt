@@ -34,16 +34,13 @@ class ForbiddenFileNameValidator(allowedFileNames: String) {
 
         constructor(name: String, childrenFileNames: Collection<String>) : this(name, null, childrenFileNames)
 
-        fun fullPath(): String {
-            return if (parent == null) {
-                name
-            } else {
-                "${parent.fullPath()}/$name"
-            }
+        fun fullPath(): String = if (parent == null) {
+            name
+        } else {
+            "${parent.fullPath()}/$name"
         }
 
-        fun allChildren(): Collection<ZipNode> =
-            children.flatMap { it.allChildren() } + this
+        fun allChildren(): Collection<ZipNode> = children.flatMap { it.allChildren() } + this
     }
 
     companion object {
