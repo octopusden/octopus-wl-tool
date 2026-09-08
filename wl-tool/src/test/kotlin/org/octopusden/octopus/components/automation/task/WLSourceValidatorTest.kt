@@ -214,6 +214,49 @@ internal class WLSourceValidatorTest {
     }
 
     @Test
+    fun `an exception spelled with capitals is masked in the light check too`(@TempDir dir: Path) {
+        val project = dir.resolve("project").createDirectories()
+        val file = project.resolve("notes.txt")
+        file.writeText("Brand2U is permitted")
+        val patterns = dir.resolve("forbidden.json")
+        patterns.writeText("""{"contains":[],"patterns":[],"exceptions":["Brand2U"],"restricted":"brand2"}""")
+
+        val validator = WLSourceValidator(
+            sourceRoot = project,
+            validationConfig = getResourceAsPath("/prod-like-config/mapping.json"),
+            filterConfig = filterConfig,
+            forbiddenPatterns = patterns,
+        )
+
+        assertTrue(validator.checkFileContentWithDoubleCheck(file).second.isEmpty())
+    }
+
+    @Test
+    fun `a rule found only outside the matched token keeps that token's position`(@TempDir dir: Path) {
+        val project = dir.resolve("project").createDirectories()
+        val file = project.resolve("line.txt")
+        // "brand2u" is an exception, so the token reaches the rules as PLACEHOLDER - which contains
+        // "holder". The rule matches there and does not occur in the token itself.
+        file.writeText("brand2u and holder here")
+        val patterns = dir.resolve("forbidden.json")
+        patterns.writeText("""{"contains":[],"patterns":[],"exceptions":["brand2u"],"restricted":"brand2"}""")
+        val mapping = dir.resolve("mapping.json")
+        mapping.writeText(
+            """[{"origin":"holder","replacement":"keeper","originTokenized":"holder","replacementTokenized":"keeper"}]""",
+        )
+
+        val validator = WLSourceValidator(
+            sourceRoot = project,
+            validationConfig = mapping,
+            filterConfig = filterConfig,
+            forbiddenPatterns = patterns,
+        )
+
+        // the first problem stays on its own token at 0; only the real "holder" at 12 is located there
+        assertEquals(listOf(0, 12), validator.checkFileContent(file).second.map { it.startPosition })
+    }
+
+    @Test
     fun `problem in a binary file is reported as a short offset record`(@TempDir reportDir: Path) {
         val binaryRoot = reportDir.resolve("project").createDirectories()
         val junk = ByteArray(4096)

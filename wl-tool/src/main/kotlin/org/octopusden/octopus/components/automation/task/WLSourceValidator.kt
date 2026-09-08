@@ -90,6 +90,7 @@ class WLSourceValidator(private val sourceRoot: Path, validationConfig: Path, va
         return projectValidationResult
     }
 
+    @JvmOverloads
     fun checkFileContentWithDoubleCheck(fileToCheck: Path, binary: Boolean = isBinary(fileToCheck)): Pair<Path, List<ValidationProblem>> {
         val checkFileContent = checkFileContent(fileToCheck, binary)
         return if (checkFileContent.second.isNotEmpty()) {
@@ -133,13 +134,10 @@ class WLSourceValidator(private val sourceRoot: Path, validationConfig: Path, va
         if (binary) {
             return filePath.relativizeAgainstSourceRoot() to checkBinaryContentLight(filePath)
         }
-        val initialText = filePath.toFile().readText().lowercase()
-        val text = exceptionItems.fold(initialText) { result, element ->
-            result.replace(
-                element,
-                TextTokenHandler.PLACEHOLDER,
-            )
-        }
+        // maskExceptions, not a literal replace of exceptionItems: the items come from the config
+        // verbatim, so one spelled with capitals never matched the lowercased text and the file was
+        // reported here while the binary path, which masks case-insensitively, suppressed it.
+        val text = maskExceptions(filePath.toFile().readText().lowercase())
         val validationProblems = restrictedItems.mapNotNull { restrictedItem ->
             if (text.contains(restrictedItem)) {
                 ValidationProblem(-1, -1, -1, "", restrictedItem, restrictedItem, "UNKNOWN_REPLACEMENT")
@@ -194,6 +192,7 @@ class WLSourceValidator(private val sourceRoot: Path, validationConfig: Path, va
         Er(ex)
     }
 
+    @JvmOverloads
     fun checkFileContent(file: Path, binary: Boolean = isBinary(file)): Pair<Path, List<ValidationProblem>> {
         logger.debug("Start validation for file={}", file.relativizeAgainstSourceRoot())
         if (binary) {
@@ -273,7 +272,12 @@ class WLSourceValidator(private val sourceRoot: Path, validationConfig: Path, va
             if (result != null) {
                 // a problem is located by the rule that matched, not by the token around it: in a binary a
                 // single token can be kilobytes of string table, and the position is all a report entry has
+                // bounded by the token: rules are matched against a token whose exceptions became
+                // PLACEHOLDER, so a rule literal occurring only inside that placeholder text is
+                // absent from `masked` here - an unbounded search would then report the next
+                // occurrence, in an unrelated token, as this problem's position and context
                 val ruleStart = masked.indexOf(result.validationProblem, startPos, ignoreCase = true)
+                    .takeIf { it >= startPos && it + result.validationProblem.length <= endPos } ?: -1
                 validationProblems.add(
                     if (ruleStart >= 0) {
                         val ruleEnd = ruleStart + result.validationProblem.length
