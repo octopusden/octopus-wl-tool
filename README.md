@@ -36,6 +36,21 @@ Violations that existed when detekt was introduced are in `*/detekt-baseline.xml
 not add entries there. Regenerate with
 `mvn -P quality generate-test-sources detekt:create-baseline`.
 
+### Mutation testing
+
+```bash
+mvn -P quality org.pitest:pitest-maven:mutationCoverage   # report in */target/pit-reports
+```
+
+On demand only — not bound to a phase, not part of `gate/merge`. It is scoped to the validators,
+the filters and the source scanner, where the logic is predicates and thresholds; report
+rendering, config holders and IO glue are left out. The mutator set is the PIT defaults minus
+`VOID_METHOD_CALLS`, which in Kotlin mostly removes compiler-generated calls (`Intrinsics` null
+checks, `closeFinally` in `use` blocks) and logging, and produces mutants nothing can kill.
+
+Current score: `validation` 73% killed / 75% test strength, `wl-tool` 67% / 78%. Read it as a
+map of untested behaviour, not as a number to raise.
+
 All of this lives in the `quality` profile, not in the default build: the plugins need a newer
 JVM than the JDK 8 the release runs on, so CI activates the profile in its own JDK 11 job.
 
