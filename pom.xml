@@ -204,6 +204,61 @@
                             </execution>
                         </executions>
                     </plugin>
+                    <!-- Mutation testing, on demand only:
+                         mvn -P quality org.pitest:pitest-maven:mutationCoverage
+                         Not bound to a phase and not a gate - see README. -->
+                    <plugin>
+                        <groupId>org.pitest</groupId>
+                        <artifactId>pitest-maven</artifactId>
+                        <version>1.17.4</version>
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.pitest</groupId>
+                                <artifactId>pitest-junit5-plugin</artifactId>
+                                <version>1.2.1</version>
+                            </dependency>
+                        </dependencies>
+                        <configuration>
+                            <targetClasses>
+                                <!-- The validators and the filters: predicates and thresholds,
+                                     where line coverage says the least. Report rendering,
+                                     config holders and IO glue are left out on purpose. -->
+                                <param>org.octopusden.octopus.tools.wl.validation.validator.*</param>
+                                <param>org.octopusden.octopus.util.FileFilter*</param>
+                                <param>org.octopusden.octopus.components.automation.task.WLSourceValidator*</param>
+                                <param>org.octopusden.octopus.components.automation.task.PrintableRuns*</param>
+                                <param>org.octopusden.octopus.components.automation.task.TextTokenHandler*</param>
+                                <param>org.octopusden.octopus.tools.wl.PatternCalculator*</param>
+                            </targetClasses>
+                            <targetTests>
+                                <param>org.octopusden.octopus.*</param>
+                            </targetTests>
+                            <!-- DEFAULTS minus VOID_METHOD_CALLS. In Kotlin that mutator
+                                 mostly removes calls the compiler generated - Intrinsics
+                                 null checks, closeFinally in `use` blocks - plus logging,
+                                 and those mutants are unkillable by design: 73 of 199
+                                 survivors in the first run were exactly that. The paid
+                                 arcmutate Kotlin plugin filters more; this needs no licence. -->
+                            <mutators>
+                                <mutator>CONDITIONALS_BOUNDARY</mutator>
+                                <mutator>INCREMENTS</mutator>
+                                <mutator>INVERT_NEGS</mutator>
+                                <mutator>MATH</mutator>
+                                <mutator>NEGATE_CONDITIONALS</mutator>
+                                <mutator>EMPTY_RETURNS</mutator>
+                                <mutator>FALSE_RETURNS</mutator>
+                                <mutator>TRUE_RETURNS</mutator>
+                                <mutator>NULL_RETURNS</mutator>
+                                <mutator>PRIMITIVE_RETURNS</mutator>
+                            </mutators>
+                            <outputFormats>
+                                <param>HTML</param>
+                                <param>XML</param>
+                            </outputFormats>
+                            <timestampedReports>false</timestampedReports>
+                            <failWhenNoMutations>false</failWhenNoMutations>
+                        </configuration>
+                    </plugin>
                     <plugin>
                         <groupId>org.jacoco</groupId>
                         <artifactId>jacoco-maven-plugin</artifactId>
