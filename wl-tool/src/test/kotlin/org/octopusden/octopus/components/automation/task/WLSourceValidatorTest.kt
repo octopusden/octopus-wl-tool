@@ -29,7 +29,7 @@ internal class WLSourceValidatorTest {
         sourceRoot = testProject,
         validationConfig = getResourceAsPath("/prod-like-config/mapping.json"),
         filterConfig = filterConfig,
-        forbiddenPatterns = forbiddenPatterns
+        forbiddenPatterns = forbiddenPatterns,
     )
 
     @Test
@@ -37,65 +37,65 @@ internal class WLSourceValidatorTest {
         val rules = WLSourceValidator.loadValidationRules(
             StringReader(
                 "[  {\n" +
-                        "    \"origin\": \"$ORIGIN_LOWERCASE\",\n" +
-                        "    \"replacement\": \"$REPLACEMENT\",\n" +
-                        "    \"originTokenized\": \"brand2,all\",\n" +
-                        "    \"replacementTokenized\": \"desktop,client\"\n" +
-                        "  }\n]"
-            ), "brand2"
+                    "    \"origin\": \"$ORIGIN_LOWERCASE\",\n" +
+                    "    \"replacement\": \"$REPLACEMENT\",\n" +
+                    "    \"originTokenized\": \"brand2,all\",\n" +
+                    "    \"replacementTokenized\": \"desktop,client\"\n" +
+                    "  }\n]",
+            ),
+            "brand2",
         )
         assertEquals(5, rules.size)
         assertTrue(
             rules.any { it.rule == ORIGIN_LOWERCASE && it.suggestedReplacement == REPLACEMENT },
-            rules.toString()
+            rules.toString(),
         )
-
     }
 
     @Test
     fun tokenizationTest() {
         val data = mapOf(
             """def testDialect = DialectFactory.loadCompiledDialect(BaseTest.getResourceAsStream("brand2yes4_test.prm"))"""
-                    to listOf(
-                "def",
-                "testDialect",
-                "DialectFactory",
-                "loadCompiledDialect",
-                "BaseTest",
-                "getResourceAsStream",
-                "brand2yes4_test",
-                "prm"
-            ),
+                to listOf(
+                    "def",
+                    "testDialect",
+                    "DialectFactory",
+                    "loadCompiledDialect",
+                    "BaseTest",
+                    "getResourceAsStream",
+                    "brand2yes4_test",
+                    "prm",
+                ),
             """("C:\\Projects\\ts\\feature_yes_adapter\\src\\main\\dialects\\brand2yes4.iso")"""
-                    to listOf(
-                "C",
-                "Projects",
-                "ts",
-                "feature_yes_adapter",
-                "src",
-                "main",
-                "dialects",
-                "brand2yes4",
-                "iso"
-            ),
+                to listOf(
+                    "C",
+                    "Projects",
+                    "ts",
+                    "feature_yes_adapter",
+                    "src",
+                    "main",
+                    "dialects",
+                    "brand2yes4",
+                    "iso",
+                ),
             """"/home/micro-macro/WEB-INF/test/pacs.008.001.02.xml""""
-                    to listOf(
-                "home",
-                "micro-macro",
-                "WEB-INF",
-                "test",
-                "pacs",
-                "008",
-                "001",
-                "02",
-                "xml"
-            ),
+                to listOf(
+                    "home",
+                    "micro-macro",
+                    "WEB-INF",
+                    "test",
+                    "pacs",
+                    "008",
+                    "001",
+                    "02",
+                    "xml",
+                ),
             """app.stopService("brand2yes")"""
-                    to listOf(
-                "app",
-                "stopService",
-                "brand2yes"
-            )
+                to listOf(
+                    "app",
+                    "stopService",
+                    "brand2yes",
+                ),
         )
         data.entries.forEach {
             assertEquals(it.value, it.key.split())
@@ -111,18 +111,16 @@ internal class WLSourceValidatorTest {
         assertNoProblem(prodLikeValidator, "/data/brand2they.txt")
     }
 
-    private fun assertNoProblem(
-        validator: WLSourceValidator,
-        file: String
-    ) {
+    private fun assertNoProblem(validator: WLSourceValidator, file: String) {
         val checkFileContent = validator.checkFileContent(getResourceAsPath(file))
-        assertTrue(checkFileContent.second.isEmpty(), "$file must not have problems but was ${checkFileContent.second.joinToString { "\"${it.problemToken}\"" }}")
+        assertTrue(
+            checkFileContent.second.isEmpty(),
+            "$file must not have problems but was ${checkFileContent.second.joinToString {
+                "\"${it.problemToken}\""
+            }}",
+        )
     }
-    private fun assertHasProblem(
-        expectedProblemTokens: List<String>,
-        validator: WLSourceValidator,
-        file: String
-    ) {
+    private fun assertHasProblem(expectedProblemTokens: List<String>, validator: WLSourceValidator, file: String) {
         val checkFileContent = validator.checkFileContentWithDoubleCheck(getResourceAsPath(file))
         val problems = checkFileContent.second.map { it.problemToken }
         assertEquals(expectedProblemTokens, problems, "Not expected problems in $file")
@@ -134,7 +132,7 @@ internal class WLSourceValidatorTest {
             sourceRoot = getResourceAsPath("/no-problem-project"),
             validationConfig = getResourceAsPath("/prod-like-config/mapping.json"),
             filterConfig = filterConfig,
-            forbiddenPatterns = forbiddenPatterns
+            forbiddenPatterns = forbiddenPatterns,
         )
         val report = validator.validate()
         assertTrue(report.isEmpty())
@@ -146,7 +144,7 @@ internal class WLSourceValidatorTest {
             sourceRoot = testProject,
             validationConfig = mappingConfig,
             filterConfig = filterConfig,
-            forbiddenPatterns = forbiddenPatterns
+            forbiddenPatterns = forbiddenPatterns,
         )
 
         val expected = ProjectValidationResult(
@@ -161,7 +159,7 @@ internal class WLSourceValidatorTest {
                         problemToken = "someToken",
                         validationProblem = "someToken",
                         suggestedReplacement = "newToken",
-                        context = " someToken"
+                        context = " someToken",
                     ),
                     ValidationProblem(
                         line = 7,
@@ -170,7 +168,7 @@ internal class WLSourceValidatorTest {
                         brokenRegex = "",
                         problemToken = "someMethod",
                         validationProblem = "someMethod",
-                        suggestedReplacement = "newMethod"
+                        suggestedReplacement = "newMethod",
                     ),
                     ValidationProblem(
                         line = 8,
@@ -179,8 +177,8 @@ internal class WLSourceValidatorTest {
                         brokenRegex = "",
                         problemToken = "someVariable",
                         validationProblem = "someVariable",
-                        suggestedReplacement = "newVar"
-                    )
+                        suggestedReplacement = "newVar",
+                    ),
                 ),
                 Paths.get("dir-to-include/TextFile.txt") to listOf(
                     ValidationProblem(
@@ -191,21 +189,21 @@ internal class WLSourceValidatorTest {
                         problemToken = "someMethod",
                         validationProblem = "someMethod",
                         suggestedReplacement = "newMethod",
-                        context = "... with problems someMethod"
-                    )
-                )
+                        context = "... with problems someMethod",
+                    ),
+                ),
             ),
             suggestedReplacements = mapOf(
                 "someToken" to "newToken",
                 "someMethod" to "newToken",
                 "someMethod" to "newMethod",
-                "someVariable" to "newVar"
+                "someVariable" to "newVar",
             ),
             skippedFilesAndFolders = listOf(
                 Paths.get("dir-to-include/ExcludedByContent.xml"),
                 Paths.get("dir-to-exclude/SomeExcludedClass.java"),
-                Paths.get("OneMoreExcludedClass.java")
-            )
+                Paths.get("OneMoreExcludedClass.java"),
+            ),
         )
         val actual = validator.validate()
 
@@ -213,6 +211,49 @@ internal class WLSourceValidatorTest {
         assertEquals(expected.fileContentProblems.toSortedMap(), actual.fileContentProblems.toSortedMap())
         assertEquals(expected.fileNameProblems.toSortedMap(), actual.fileNameProblems.toSortedMap())
         assertEquals(expected.suggestedReplacements.toSortedMap(), actual.suggestedReplacements.toSortedMap())
+    }
+
+    @Test
+    fun `an exception spelled with capitals is masked in the light check too`(@TempDir dir: Path) {
+        val project = dir.resolve("project").createDirectories()
+        val file = project.resolve("notes.txt")
+        file.writeText("Brand2U is permitted")
+        val patterns = dir.resolve("forbidden.json")
+        patterns.writeText("""{"contains":[],"patterns":[],"exceptions":["Brand2U"],"restricted":"brand2"}""")
+
+        val validator = WLSourceValidator(
+            sourceRoot = project,
+            validationConfig = getResourceAsPath("/prod-like-config/mapping.json"),
+            filterConfig = filterConfig,
+            forbiddenPatterns = patterns,
+        )
+
+        assertTrue(validator.checkFileContentWithDoubleCheck(file).second.isEmpty())
+    }
+
+    @Test
+    fun `a rule found only outside the matched token keeps that token's position`(@TempDir dir: Path) {
+        val project = dir.resolve("project").createDirectories()
+        val file = project.resolve("line.txt")
+        // "brand2u" is an exception, so the token reaches the rules as PLACEHOLDER - which contains
+        // "holder". The rule matches there and does not occur in the token itself.
+        file.writeText("brand2u and holder here")
+        val patterns = dir.resolve("forbidden.json")
+        patterns.writeText("""{"contains":[],"patterns":[],"exceptions":["brand2u"],"restricted":"brand2"}""")
+        val mapping = dir.resolve("mapping.json")
+        mapping.writeText(
+            """[{"origin":"holder","replacement":"keeper","originTokenized":"holder","replacementTokenized":"keeper"}]""",
+        )
+
+        val validator = WLSourceValidator(
+            sourceRoot = project,
+            validationConfig = mapping,
+            filterConfig = filterConfig,
+            forbiddenPatterns = patterns,
+        )
+
+        // the first problem stays on its own token at 0; only the real "holder" at 12 is located there
+        assertEquals(listOf(0, 12), validator.checkFileContent(file).second.map { it.startPosition })
     }
 
     @Test
@@ -229,16 +270,18 @@ internal class WLSourceValidatorTest {
                 sourceRoot = binaryRoot,
                 validationConfig = getResourceAsPath("/prod-like-config/mapping.json"),
                 filterConfig = filterConfig,
-                forbiddenPatterns = forbiddenPatterns
+                forbiddenPatterns = forbiddenPatterns,
             ).validate(),
             errorsReport,
             reportDir.resolve("success.txt").toFile(),
-            "1.0"
+            "1.0",
         )
 
         val report = String(errorsReport.readBytes(), StandardCharsets.UTF_8)
-        assertFalse(report.any { it.isISOControl() && it != '\n' && it != '\r' } || report.contains('\uFFFD'),
-            "Report must stay readable text, was $report")
+        assertFalse(
+            report.any { it.isISOControl() && it != '\n' && it != '\r' } || report.contains('\uFFFD'),
+            "Report must stay readable text, was $report",
+        )
 
         val records = report.lines().filter { it.startsWith("sentinel-cli:") }
         assertEquals(1, records.size, "Expected a single record, was $report")
@@ -268,7 +311,7 @@ internal class WLSourceValidatorTest {
     @Test
     fun `printable islands of machine code are skipped, string constants are not`() {
         val bytes = byteArrayOf(0, 0) + "abc".toByteArray() + byteArrayOf(0) +
-                "a string constant".toByteArray() + byteArrayOf(0, 0)
+            "a string constant".toByteArray() + byteArrayOf(0, 0)
         val runs = PrintableRunsInputStream(bytes.inputStream())
 
         assertEquals("a string constant\n", runs.bufferedReader().readText())
@@ -277,34 +320,34 @@ internal class WLSourceValidatorTest {
 
     @Test
     fun extendMappingTest() {
-
         val actual = WLSourceValidator.extendMapping(
             listOf(
                 MappingConfig(
                     origin = "some-token",
                     replacement = "new-token",
                     originTokenized = "some,token",
-                    replacementTokenized = "new,token"
+                    replacementTokenized = "new,token",
                 ),
                 MappingConfig(
                     origin = "oldToken",
                     replacement = "newToken",
                     originTokenized = "old,token",
-                    replacementTokenized = "new,token"
+                    replacementTokenized = "new,token",
                 ),
                 MappingConfig(
                     origin = "old",
                     replacement = "new",
                     originTokenized = "old",
-                    replacementTokenized = "new"
+                    replacementTokenized = "new",
                 ),
                 MappingConfig(
                     origin = "oldnospaces",
                     replacement = "newnospaces",
                     originTokenized = "old,no,spaces",
-                    replacementTokenized = "new,no,spaces"
+                    replacementTokenized = "new,no,spaces",
                 ),
-            ), "brand2"
+            ),
+            "brand2",
         )
 
         val expected = mapOf(
@@ -322,16 +365,14 @@ internal class WLSourceValidatorTest {
             "OLD_NO_SPACES" to "NEW_NO_SPACES",
             "OldNoSpaces" to "NewNoSpaces",
             "oldNoSpaces" to "newNoSpaces",
-            "oldnospaces" to "newnospaces"
+            "oldnospaces" to "newnospaces",
         )
         assertEquals(expected.toSortedMap(), actual.toSortedMap())
     }
 
-    private fun getResourceAsPath(relativePath: String): Path {
-        return WLSourceValidatorTest::class.java
-            .getResource(relativePath)
-            ?.toURI()
-            ?.toPath()
-            ?: throw IllegalStateException("Can't find $relativePath in resources")
-    }
+    private fun getResourceAsPath(relativePath: String): Path = WLSourceValidatorTest::class.java
+        .getResource(relativePath)
+        ?.toURI()
+        ?.toPath()
+        ?: throw IllegalStateException("Can't find $relativePath in resources")
 }

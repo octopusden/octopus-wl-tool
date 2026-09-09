@@ -24,23 +24,18 @@ import kotlin.io.path.fileSize
 import kotlin.io.path.inputStream
 import kotlin.io.path.isRegularFile
 
-class WLSourceValidator(
-    private val sourceRoot: Path,
-    validationConfig: Path,
-    val filterConfig: Path,
-    forbiddenPatterns: Path
-) {
+class WLSourceValidator(private val sourceRoot: Path, validationConfig: Path, val filterConfig: Path, forbiddenPatterns: Path) {
     val validationRules: List<FileValidationRule>
-    private val copyrightValidator:CopyrightValidator
-    private val props : WLProperties
-    private val exceptionItems : List<String>
-    private val exceptionsPattern : Regex
-    private val restrictedItems : List<String>
+    private val copyrightValidator: CopyrightValidator
+    private val props: WLProperties
+    private val exceptionItems: List<String>
+    private val exceptionsPattern: Regex
+    private val restrictedItems: List<String>
 
     init {
         validateConfigFiles(sourceRoot, validationConfig, filterConfig, forbiddenPatterns)
 
-        props  = objectMapper.readValue(forbiddenPatterns.toFile())
+        props = objectMapper.readValue(forbiddenPatterns.toFile())
         exceptionItems = props.exceptions
         exceptionsPattern = Regex(PatternCalculator().calculate(exceptionItems))
         restrictedItems = listOf(props.restricted)
@@ -82,16 +77,21 @@ class WLSourceValidator(
         val suggestedReplacements = fileContentProblems.values.flatMap(::distinctProblems).toMap()
 
         val projectValidationResult =
-            ProjectValidationResult(fileNameProblems, fileContentProblems, suggestedReplacements, skippedFiles.map { sourceRoot.relativize(it) })
+            ProjectValidationResult(
+                fileNameProblems,
+                fileContentProblems,
+                suggestedReplacements,
+                skippedFiles.map {
+                    sourceRoot.relativize(it)
+                },
+            )
         logger.info("Validation finished successfully")
 
         return projectValidationResult
     }
 
-    fun checkFileContentWithDoubleCheck(
-        fileToCheck: Path,
-        binary: Boolean = isBinary(fileToCheck)
-    ): Pair<Path, List<ValidationProblem>> {
+    @JvmOverloads
+    fun checkFileContentWithDoubleCheck(fileToCheck: Path, binary: Boolean = isBinary(fileToCheck)): Pair<Path, List<ValidationProblem>> {
         val checkFileContent = checkFileContent(fileToCheck, binary)
         return if (checkFileContent.second.isNotEmpty()) {
             checkFileContent
@@ -104,13 +104,11 @@ class WLSourceValidator(
         }
     }
 
-    private fun distinctProblems(validationProblems: List<ValidationProblem>): List<Pair<String, String>> {
-        return validationProblems.map { it.problemToken to it.suggestedReplacement }
+    private fun distinctProblems(validationProblems: List<ValidationProblem>): List<Pair<String, String>> = validationProblems.map {
+        it.problemToken to it.suggestedReplacement
     }
 
-    private fun checkForNameProblems(filesToCheck: List<Path>): Map<String, String> {
-        return filesToCheck.mapNotNull(::verifyFileName).toMap()
-    }
+    private fun checkForNameProblems(filesToCheck: List<Path>): Map<String, String> = filesToCheck.mapNotNull(::verifyFileName).toMap()
 
     private fun verifyFileName(file: Path): Pair<String, String>? {
         val testTokenAgainstRules =
@@ -118,15 +116,13 @@ class WLSourceValidator(
         return testTokenAgainstRules?.let { return it.problemToken to it.suggestedReplacement }
     }
 
-    private fun validateCopyright(file: Path, binary: Boolean): List<ValidationProblem> {
-        return if (binary) {
-            file.inputStream().buffered().use { source ->
-                val runs = PrintableRunsInputStream(source)
-                copyrightValidator.validate(runs).map(runs::asBinaryProblem)
-            }
-        } else {
-            file.inputStream().use { inputStream -> copyrightValidator.validate(inputStream) }
+    private fun validateCopyright(file: Path, binary: Boolean): List<ValidationProblem> = if (binary) {
+        file.inputStream().buffered().use { source ->
+            val runs = PrintableRunsInputStream(source)
+            copyrightValidator.validate(runs).map(runs::asBinaryProblem)
         }
+    } else {
+        file.inputStream().use { inputStream -> copyrightValidator.validate(inputStream) }
     }
 
     private fun checkFileContentLight(filePath: Path, binary: Boolean): Pair<Path, List<ValidationProblem>> {
@@ -138,13 +134,10 @@ class WLSourceValidator(
         if (binary) {
             return filePath.relativizeAgainstSourceRoot() to checkBinaryContentLight(filePath)
         }
-        val initialText = filePath.toFile().readText().lowercase()
-        val text = exceptionItems.fold(initialText) { result, element ->
-            result.replace(
-                element,
-                TextTokenHandler.PLACEHOLDER
-            )
-        }
+        // maskExceptions, not a literal replace of exceptionItems: the items come from the config
+        // verbatim, so one spelled with capitals never matched the lowercased text and the file was
+        // reported here while the binary path, which masks case-insensitively, suppressed it.
+        val text = maskExceptions(filePath.toFile().readText().lowercase())
         val validationProblems = restrictedItems.mapNotNull { restrictedItem ->
             if (text.contains(restrictedItem)) {
                 ValidationProblem(-1, -1, -1, "", restrictedItem, restrictedItem, "UNKNOWN_REPLACEMENT")
@@ -155,30 +148,33 @@ class WLSourceValidator(
         return filePath.relativizeAgainstSourceRoot() to validationProblems
     }
 
-
     /**
      * Same paranoid substring check as [checkFileContentLight], but over the printable runs of a binary
      * instead of its whole content decoded as a String.
      */
-    private fun checkBinaryContentLight(filePath: Path): List<ValidationProblem> {
-        return filePath.inputStream().buffered().use { source ->
-            val runs = PrintableRunsInputStream(source)
-            runs.bufferedReader().useLines { lines ->
-                lines.withIndex().firstNotNullOfOrNull { (index, line) ->
-                    val text = maskExceptions(line.lowercase())
-                    restrictedItems.firstNotNullOfOrNull { restrictedItem ->
-                        val position = text.indexOf(restrictedItem)
-                        if (position >= 0) {
-                            ValidationProblem(
-                                -1, -1, -1, "", restrictedItem, restrictedItem, "UNKNOWN_REPLACEMENT",
-                                byteOffset = runs.offsetOf(index + 1, position)
-                            )
-                        } else {
-                            null
-                        }
+    private fun checkBinaryContentLight(filePath: Path): List<ValidationProblem> = filePath.inputStream().buffered().use { source ->
+        val runs = PrintableRunsInputStream(source)
+        runs.bufferedReader().useLines { lines ->
+            lines.withIndex().firstNotNullOfOrNull { (index, line) ->
+                val text = maskExceptions(line.lowercase())
+                restrictedItems.firstNotNullOfOrNull { restrictedItem ->
+                    val position = text.indexOf(restrictedItem)
+                    if (position >= 0) {
+                        ValidationProblem(
+                            -1,
+                            -1,
+                            -1,
+                            "",
+                            restrictedItem,
+                            restrictedItem,
+                            "UNKNOWN_REPLACEMENT",
+                            byteOffset = runs.offsetOf(index + 1, position),
+                        )
+                    } else {
+                        null
                     }
-                }?.let(::listOf) ?: emptyList()
-            }
+                }
+            }?.let(::listOf) ?: emptyList()
         }
     }
 
@@ -186,23 +182,23 @@ class WLSourceValidator(
      * Binary content has no lines: it is scanned as a stream of printable runs and problems are located
      * by byte offset, so a report entry stays short and readable instead of quoting the surrounding bytes.
      */
-    private fun processBinaryFile(file: Path): Outcome<List<ValidationProblem>> {
-        return try {
-            file.inputStream().buffered().use { source ->
-                val runs = PrintableRunsInputStream(source)
-                val problems = processLines(runs.bufferedReader())
-                Ok(problems.map(runs::asBinaryProblem))
-            }
-        } catch (ex: Throwable) {
-            Er(ex)
+    private fun processBinaryFile(file: Path): Outcome<List<ValidationProblem>> = try {
+        file.inputStream().buffered().use { source ->
+            val runs = PrintableRunsInputStream(source)
+            val problems = processLines(runs.bufferedReader())
+            Ok(problems.map(runs::asBinaryProblem))
         }
+    } catch (ex: Throwable) {
+        Er(ex)
     }
 
+    @JvmOverloads
     fun checkFileContent(file: Path, binary: Boolean = isBinary(file)): Pair<Path, List<ValidationProblem>> {
         logger.debug("Start validation for file={}", file.relativizeAgainstSourceRoot())
         if (binary) {
             return when (val result = processBinaryFile(file)) {
                 is Ok -> file.relativizeAgainstSourceRoot() to result.value
+
                 is Er -> {
                     logger.error("Can't process binary file=${file.relativizeAgainstSourceRoot()}", result.error)
                     file.relativizeAgainstSourceRoot() to emptyList()
@@ -218,14 +214,16 @@ class WLSourceValidator(
 
         return when (validationProblems) {
             is Ok -> file.relativizeAgainstSourceRoot() to validationProblems.value
+
             is Er -> {
                 logger.warn(
                     "Can't process file=${file.relativizeAgainstSourceRoot()}, fallback to text processing",
-                    validationProblems.error.message
+                    validationProblems.error.message,
                 )
                 // fallback to simple text processing
                 when (val result = processTextFile(file)) {
                     is Ok -> file.relativizeAgainstSourceRoot() to result.value
+
                     is Er -> {
                         logger.error("Can't process file=${file.relativizeAgainstSourceRoot()}", result.error)
                         file.relativizeAgainstSourceRoot() to emptyList()
@@ -235,14 +233,10 @@ class WLSourceValidator(
         }
     }
 
-    private fun processTextFile(
-        file: Path,
-    ): Outcome<List<ValidationProblem>> {
-        return try {
-            file.bufferedReader().use { bufferedReader -> Ok(processLines(bufferedReader)) }
-        } catch (ex: Throwable) {
-            Er(ex)
-        }
+    private fun processTextFile(file: Path): Outcome<List<ValidationProblem>> = try {
+        file.bufferedReader().use { bufferedReader -> Ok(processLines(bufferedReader)) }
+    } catch (ex: Throwable) {
+        Er(ex)
     }
 
     private fun processLines(reader: BufferedReader): List<ValidationProblem> {
@@ -273,23 +267,28 @@ class WLSourceValidator(
                 token,
                 lineNumber,
                 startPos,
-                endPos
+                endPos,
             )
             if (result != null) {
                 // a problem is located by the rule that matched, not by the token around it: in a binary a
                 // single token can be kilobytes of string table, and the position is all a report entry has
+                // bounded by the token: rules are matched against a token whose exceptions became
+                // PLACEHOLDER, so a rule literal occurring only inside that placeholder text is
+                // absent from `masked` here - an unbounded search would then report the next
+                // occurrence, in an unrelated token, as this problem's position and context
                 val ruleStart = masked.indexOf(result.validationProblem, startPos, ignoreCase = true)
+                    .takeIf { it >= startPos && it + result.validationProblem.length <= endPos } ?: -1
                 validationProblems.add(
                     if (ruleStart >= 0) {
                         val ruleEnd = ruleStart + result.validationProblem.length
                         result.copy(
                             startPosition = ruleStart,
                             endPosition = ruleEnd,
-                            context = text.withContext(ruleStart, ruleEnd)
+                            context = text.withContext(ruleStart, ruleEnd),
                         )
                     } else {
                         result.copy(context = text.withContext(startPos, endPos))
-                    }
+                    },
                 )
             }
         }
@@ -299,78 +298,71 @@ class WLSourceValidator(
     /** Same-length mask, so a position found in the masked text is a position in the original. */
     private fun maskExceptions(text: String) = exceptionsPattern.replace(text) { "#".repeat(it.value.length) }
 
-    private fun processStructuredFormat(
-        objectMapper: ObjectMapper,
-        file: Path,
-    ): Outcome<List<ValidationProblem>> {
-        return try {
-            val parser = objectMapper.createParser(file.toFile())
+    private fun processStructuredFormat(objectMapper: ObjectMapper, file: Path): Outcome<List<ValidationProblem>> = try {
+        val parser = objectMapper.createParser(file.toFile())
 
-            var location = parser.currentLocation
-            var token = parser.nextToken()
-            val validationProblems: MutableList<ValidationProblem> = ArrayList()
+        var location = parser.currentLocation
+        var token = parser.nextToken()
+        val validationProblems: MutableList<ValidationProblem> = ArrayList()
 
-            while (token != null) {
-                if (!token.isStructStart && !token.isStructEnd) {
-                    val tokenText = parser.text
-                    val line = location.lineNr
+        while (token != null) {
+            if (!token.isStructStart && !token.isStructEnd) {
+                val tokenText = parser.text
+                val line = location.lineNr
 
-                    validationProblems.addAll(processText(tokenText, line))
-                }
-                token = parser.nextToken()
-                location = parser.currentLocation
+                validationProblems.addAll(processText(tokenText, line))
             }
-            Ok(validationProblems)
-        } catch (ex: Throwable) {
-            Er(ex)
+            token = parser.nextToken()
+            location = parser.currentLocation
         }
+        Ok(validationProblems)
+    } catch (ex: Throwable) {
+        Er(ex)
     }
 
-    private fun processJavaSourceFile(file: Path): Outcome<List<ValidationProblem>> {
-        return try {
-            val parseResult = JavaParser().parse(file)
-            if (parseResult.isSuccessful) {
-                val validationProblems: MutableList<ValidationProblem> = ArrayList()
+    private fun processJavaSourceFile(file: Path): Outcome<List<ValidationProblem>> = try {
+        val parseResult = JavaParser().parse(file)
+        if (parseResult.isSuccessful) {
+            val validationProblems: MutableList<ValidationProblem> = ArrayList()
 
-                if (parseResult.commentsCollection.isPresent) {
-                    parseResult.commentsCollection.get().comments.forEach {
-                        val commentText = it.content
-                        val result = processText(commentText, it.begin.get().line)
-                        validationProblems.addAll(result)
-                    }
+            if (parseResult.commentsCollection.isPresent) {
+                parseResult.commentsCollection.get().comments.forEach {
+                    val commentText = it.content
+                    val result = processText(commentText, it.begin.get().line)
+                    validationProblems.addAll(result)
                 }
-
-                val ast = parseResult.result.get()
-                ast.walk { node ->
-                    if (node is NodeWithIdentifier<*>) {
-                        val identifier = node.identifier
-                        val nodeBegin = node.begin.get()
-                        val nodeEnd = node.end.get()
-
-                        val line = nodeBegin.line
-                        val startPos = nodeEnd.column - identifier.length
-                        val endPos = nodeEnd.column
-
-                        val result = TextTokenHandler(validationRules, exceptionItems).testTokenAgainstRules(
-                            identifier,
-                            line,
-                            startPos,
-                            endPos,
-                        )
-
-                        if (result != null) {
-                            validationProblems.add(result)
-                        }
-                    }
-                }
-                Ok(validationProblems)
-            } else {
-                Er(Exception("Parse error=${parseResult.problems}"))
             }
-        } catch (ex: Throwable) {
-            //TODO: hidding potential bugs!
-            Er(ex)
+
+            val ast = parseResult.result.get()
+            ast.walk { node ->
+                if (node is NodeWithIdentifier<*>) {
+                    val identifier = node.identifier
+                    val nodeBegin = node.begin.get()
+                    val nodeEnd = node.end.get()
+
+                    val line = nodeBegin.line
+                    val startPos = nodeEnd.column - identifier.length
+                    val endPos = nodeEnd.column
+
+                    val result = TextTokenHandler(validationRules, exceptionItems).testTokenAgainstRules(
+                        identifier,
+                        line,
+                        startPos,
+                        endPos,
+                    )
+
+                    if (result != null) {
+                        validationProblems.add(result)
+                    }
+                }
+            }
+            Ok(validationProblems)
+        } else {
+            Er(Exception("Parse error=${parseResult.problems}"))
         }
+    } catch (ex: Throwable) {
+        // TODO: hidding potential bugs!
+        Er(ex)
     }
 
     private fun Path.relativizeAgainstSourceRoot() = sourceRoot.relativize(this)
@@ -387,24 +379,22 @@ class WLSourceValidator(
          * Content-based check, on purpose: the files this matters for (compiled executables) often have
          * no extension at all.
          */
-        internal fun isBinary(file: Path): Boolean {
-            return try {
-                file.inputStream().buffered().use { input ->
-                    val probe = ByteArray(BINARY_PROBE_SIZE)
-                    var probed = 0
-                    while (probed < probe.size) {
-                        val read = input.read(probe, probed, probe.size - probed)
-                        if (read < 0) {
-                            break
-                        }
-                        probed += read
+        internal fun isBinary(file: Path): Boolean = try {
+            file.inputStream().buffered().use { input ->
+                val probe = ByteArray(BINARY_PROBE_SIZE)
+                var probed = 0
+                while (probed < probe.size) {
+                    val read = input.read(probe, probed, probe.size - probed)
+                    if (read < 0) {
+                        break
                     }
-                    (0 until probed).any { probe[it] == ZERO_BYTE }
+                    probed += read
                 }
-            } catch (ex: Throwable) {
-                logger.warn("Can't probe file=$file for binary content", ex)
-                false
+                (0 until probed).any { probe[it] == ZERO_BYTE }
             }
+        } catch (ex: Throwable) {
+            logger.warn("Can't probe file=$file for binary content", ex)
+            false
         }
 
         private fun validateConfigFiles(vararg paths: Path) {
@@ -422,23 +412,21 @@ class WLSourceValidator(
                 .sortedByDescending { it.rule.length }
         }
 
-        internal fun extendMapping(mappings: List<MappingConfig>, restricted: String): Map<String, String> {
-            return mappings.flatMap{process(it, restricted)}.toMap()
-        }
+        internal fun extendMapping(mappings: List<MappingConfig>, restricted: String): Map<String, String> = mappings.flatMap {
+            process(it, restricted)
+        }.toMap()
 
-        private fun process(mappingConfig: MappingConfig, restricted: String): List<Pair<String, String>> {
-            return listOf(
-                snakeCase(mappingConfig.originTokenized) to snakeCase(mappingConfig.replacementTokenized),
-                camelCase(mappingConfig.originTokenized) to camelCase(mappingConfig.replacementTokenized),
-                camelCaseFirstSentenceCase(mappingConfig.originTokenized) to camelCaseFirstSentenceCase(mappingConfig.replacementTokenized),
-                restrictedCapitalized(mappingConfig.originTokenized, restricted) to camelCase(mappingConfig.replacementTokenized),
-                mappingConfig.origin to mappingConfig.replacement,
-                mappingConfig.origin.lowercase() to mappingConfig.replacement.lowercase()
-            )
-        }
+        private fun process(mappingConfig: MappingConfig, restricted: String): List<Pair<String, String>> = listOf(
+            snakeCase(mappingConfig.originTokenized) to snakeCase(mappingConfig.replacementTokenized),
+            camelCase(mappingConfig.originTokenized) to camelCase(mappingConfig.replacementTokenized),
+            camelCaseFirstSentenceCase(mappingConfig.originTokenized) to camelCaseFirstSentenceCase(mappingConfig.replacementTokenized),
+            restrictedCapitalized(mappingConfig.originTokenized, restricted) to camelCase(mappingConfig.replacementTokenized),
+            mappingConfig.origin to mappingConfig.replacement,
+            mappingConfig.origin.lowercase() to mappingConfig.replacement.lowercase(),
+        )
 
-        private fun restrictedCapitalized(string: String, restrictedItem: String, delimiter: String = ",", separator: String = ""): String {
-            return if (string.startsWith(restrictedItem, true)) {
+        private fun restrictedCapitalized(string: String, restrictedItem: String, delimiter: String = ",", separator: String = ""): String =
+            if (string.startsWith(restrictedItem, true)) {
                 val sb = StringBuilder()
                 val parts = string.split(delimiter)
                 val restrictedToken = parts[0]
@@ -448,35 +436,22 @@ class WLSourceValidator(
             } else {
                 camelCase(string, delimiter, separator)
             }
-        }
 
-        private fun snakeCase(string: String, delimiter: String = ",", separator: String = "_"): String {
-            return string.split(delimiter).joinToString(separator = separator, transform = String::uppercase)
-        }
+        private fun snakeCase(string: String, delimiter: String = ",", separator: String = "_"): String =
+            string.split(delimiter).joinToString(separator = separator, transform = String::uppercase)
 
-        private fun camelCase(string: String, delimiter: String = ",", separator: String = ""): String {
-            return string.split(delimiter).joinToString(separator = separator, transform = String::capitalize)
-        }
+        private fun camelCase(string: String, delimiter: String = ",", separator: String = ""): String =
+            string.split(delimiter).joinToString(separator = separator, transform = String::capitalize)
 
-        private fun camelCaseFirstSentenceCase(
-            string: String,
-            delimiter: String = ",",
-            separator: String = ""
-        ): String {
-            return camelCase(string, delimiter, separator).decapitalize()
-        }
+        private fun camelCaseFirstSentenceCase(string: String, delimiter: String = ",", separator: String = ""): String =
+            camelCase(string, delimiter, separator).decapitalize()
     }
 }
 
-internal fun String.split(): List<String> {
-    return this.split(" ", ",", ".", "=", ":", "(", ")", "\"", "\\", "/", "{", "}", "$", "<", ">")
-        .filter(String::isNotBlank)
-}
+internal fun String.split(): List<String> = this.split(" ", ",", ".", "=", ":", "(", ")", "\"", "\\", "/", "{", "}", "$", "<", ">")
+    .filter(String::isNotBlank)
 
-data class FileValidationRule(
-    val rule: String,
-    val suggestedReplacement: String,
-)
+data class FileValidationRule(val rule: String, val suggestedReplacement: String)
 
 data class ProjectValidationResult(
     val fileNameProblems: Map<String, String>,
@@ -484,20 +459,11 @@ data class ProjectValidationResult(
     val suggestedReplacements: Map<String, String>,
     val skippedFilesAndFolders: List<Path>,
 ) {
-    fun isNotEmpty(): Boolean {
-        return fileNameProblems.isNotEmpty() || fileContentProblems.isNotEmpty()
-    }
-    fun isEmpty(): Boolean {
-        return !isNotEmpty()
-    }
+    fun isNotEmpty(): Boolean = fileNameProblems.isNotEmpty() || fileContentProblems.isNotEmpty()
+    fun isEmpty(): Boolean = !isNotEmpty()
 }
 
-data class MappingConfig(
-    val origin: String,
-    val replacement: String,
-    val originTokenized: String,
-    val replacementTokenized: String,
-)
+data class MappingConfig(val origin: String, val replacement: String, val originTokenized: String, val replacementTokenized: String)
 
 sealed class Outcome<out T>
 
@@ -606,7 +572,7 @@ internal class PrintableRunsInputStream(source: InputStream) : FilterInputStream
         line = -1,
         startPosition = -1,
         endPosition = -1,
-        byteOffset = offsetOf(problem.line, problem.startPosition)
+        byteOffset = offsetOf(problem.line, problem.startPosition),
     )
 
     companion object {

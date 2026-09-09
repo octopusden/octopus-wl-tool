@@ -1,0 +1,56 @@
+name: Merge Gate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+# Least privilege: only the security job gets security-events, and it lists every
+# scope it needs - a job-level block replaces the set rather than extending it.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+
+  quality:
+    uses: ./.github/workflows/quality-gates.yml
+
+  security:
+    permissions:
+      contents: read
+      security-events: write
+    uses: ./.github/workflows/security-reports.yml
+
+  gate-merge:
+    name: gate/merge
+    if: ${{ always() }}
+    needs:
+      - build
+      - quality
+      - security
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate gate results
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          results='${{ toJson(needs) }}'
+          failed="$(jq -r 'to_entries[] | select(.value.result != "success") | "\(.key): \(.value.result)"' <<<"${results}")"
+
+          {
+            echo "### Merge gate results"
+            jq -r 'to_entries[] | "- \(.key): \(.value.result)"' <<<"${results}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ -n "${failed}" ]]; then
+            echo "Merge gate failed:"
+            echo "${failed}"
+            exit 1
+          fi
+
+          echo "Merge gate passed."

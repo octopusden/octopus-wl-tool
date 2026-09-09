@@ -1,9 +1,15 @@
 name: Maven Compile & UT
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  workflow_call:
+  workflow_dispatch:
+
+# `mvn package` reads the repository and nothing else.
+permissions:
+  contents: read
 
 jobs:
   build:
-    uses: octopusden/octopus-base/.github/workflows/common-java-maven-build.yml@v2.1.12
+    uses: octopusden/octopus-base/.github/workflows/common-java-maven-build.yml@v3.0.0
     with:
       java-version: '8'

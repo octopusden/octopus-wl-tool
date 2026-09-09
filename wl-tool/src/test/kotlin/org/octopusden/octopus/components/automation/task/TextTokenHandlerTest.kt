@@ -1,35 +1,37 @@
 package org.octopusden.octopus.components.automation.task
 
-import org.octopusden.octopus.components.automation.task.TextTokenHandler.Companion.PLACEHOLDER
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
+import org.octopusden.octopus.components.automation.task.TextTokenHandler.Companion.PLACEHOLDER
 import java.util.regex.Matcher
 import java.util.regex.Pattern
 
 internal class TextTokenHandlerTest {
 
     private val exceptions = listOf("brand2u", "brand2they")
+
     @Test
     fun testTokenAgainstRules() {
-        val textTokenHandler = TextTokenHandler(listOf(
-            FileValidationRule("brand2all", "sonic"),
-            FileValidationRule("brand2me", "nuken")
-        ), exceptions)
+        val textTokenHandler = TextTokenHandler(
+            listOf(
+                FileValidationRule("brand2all", "sonic"),
+                FileValidationRule("brand2me", "nuken"),
+            ),
+            exceptions,
+        )
         val validationProblem =
             textTokenHandler.testTokenAgainstRules("org.octopusden.octopus.system.brand2all", 1, 1, 10)
         assertNotNull(validationProblem)
         assertEquals("org.octopusden.octopus.system.sonic", validationProblem?.suggestedReplacement)
 
-
         val validationProblem2 =
             textTokenHandler.testTokenAgainstRules("org.octopusden.octopus.brand2me.zenit.brand2all", 1, 1, 10)
         assertNotNull(validationProblem)
-        //TODO (single replacement only)!
+        // TODO (single replacement only)!
         assertEquals("org.octopusden.octopus.brand2me.zenit.sonic", validationProblem2?.suggestedReplacement)
-
     }
 
     @Test
@@ -48,7 +50,7 @@ internal class TextTokenHandlerTest {
         val value = exceptions.fold("BRAND2U zenit brand2u aabd Brand2u ".lowercase()) { result, element ->
             result.replace(
                 element,
-                PLACEHOLDER
+                PLACEHOLDER,
             )
         }
         println(value)
@@ -57,13 +59,16 @@ internal class TextTokenHandlerTest {
 
     @Test
     fun testExcludeBRAND2U() {
-        val textTokenHandler = TextTokenHandler(listOf(
-            FileValidationRule("brand2all", "sonic"),
-            FileValidationRule("brand2", "b"),
-            FileValidationRule("BRAND2", "B"),
-            FileValidationRule("Brand2", "b"),
-            FileValidationRule("branD2", "b")
-        ), exceptions)
+        val textTokenHandler = TextTokenHandler(
+            listOf(
+                FileValidationRule("brand2all", "sonic"),
+                FileValidationRule("brand2", "b"),
+                FileValidationRule("BRAND2", "B"),
+                FileValidationRule("Brand2", "b"),
+                FileValidationRule("branD2", "b"),
+            ),
+            exceptions,
+        )
         val validationProblem =
             textTokenHandler.testTokenAgainstRules("org.octopusden.octopus.brand2u.zenit.brand2all", 1, 1, 10)
         assertNotNull(validationProblem)
@@ -74,10 +79,7 @@ internal class TextTokenHandlerTest {
         assertNoProblem(textTokenHandler, "org.octopusden.octopus.branD2u.zenit")
     }
 
-    private fun assertNoProblem(
-        textTokenHandler: TextTokenHandler,
-        token: String
-    ) {
+    private fun assertNoProblem(textTokenHandler: TextTokenHandler, token: String) {
         val validationProblem2 =
             textTokenHandler.testTokenAgainstRules(token, 1, 1, 10)
         assertNull(validationProblem2)
@@ -87,7 +89,7 @@ internal class TextTokenHandlerTest {
     fun testShouldNotMatchRuleInsideAnotherToken() {
         val textTokenHandler = TextTokenHandler(
             listOf(FileValidationRule("SFX_", "SFX_")),
-            emptyList()
+            emptyList(),
         )
         val validationProblem =
             textTokenHandler.testTokenAgainstRules("REQUIRED_SFX_JSON", 1, 1, 17)
@@ -98,7 +100,7 @@ internal class TextTokenHandlerTest {
     fun testShouldMatchStandaloneTokenRule() {
         val textTokenHandler = TextTokenHandler(
             listOf(FileValidationRule("SFX_", "SFX_")),
-            emptyList()
+            emptyList(),
         )
         val validationProblem =
             textTokenHandler.testTokenAgainstRules("SFX_", 1, 1, 4)
@@ -110,7 +112,7 @@ internal class TextTokenHandlerTest {
     fun testShouldNotMatchWordRuleInsideAnotherWord() {
         val textTokenHandler = TextTokenHandler(
             listOf(FileValidationRule("issuing", "issuing")),
-            emptyList()
+            emptyList(),
         )
         val validationProblem =
             textTokenHandler.testTokenAgainstRules("reissuing", 1, 1, 9)
@@ -121,7 +123,7 @@ internal class TextTokenHandlerTest {
     fun testShouldMatchStandaloneWordRule() {
         val textTokenHandler = TextTokenHandler(
             listOf(FileValidationRule("issuing", "issuing")),
-            emptyList()
+            emptyList(),
         )
         val validationProblem =
             textTokenHandler.testTokenAgainstRules("issuing", 1, 1, 7)
@@ -133,7 +135,7 @@ internal class TextTokenHandlerTest {
     fun testShouldKeepSubstringMatchingForAlphaNumericRule() {
         val textTokenHandler = TextTokenHandler(
             listOf(FileValidationRule("brand2", "b")),
-            emptyList()
+            emptyList(),
         )
         val validationProblem =
             textTokenHandler.testTokenAgainstRules("brand2maps", 1, 1, 10)

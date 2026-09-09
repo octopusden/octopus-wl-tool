@@ -14,14 +14,14 @@ internal class WLReportGeneratorTest {
         val line = "before".repeat(10) + "M".repeat(60) + "after".repeat(10)
         val context = line.withContext(60, 120)
         val problem = ValidationProblem(
-            1, 60, 120, "", "token", "rule", "", byteOffset = 4096, context = context
+            1, 60, 120, "", "token", "rule", "", byteOffset = 4096, context = context,
         )
 
         val record = WLReportGenerator.record("bin/tool", problem)
 
         assertTrue(
             context.length <= MAX_EXCERPT_LENGTH,
-            "withContext produced ${context.length} chars, over the $MAX_EXCERPT_LENGTH budget: $context"
+            "withContext produced ${context.length} chars, over the $MAX_EXCERPT_LENGTH budget: $context",
         )
         assertTrue(record.contains(context), "Entry must quote the excerpt whole, was: $record")
     }

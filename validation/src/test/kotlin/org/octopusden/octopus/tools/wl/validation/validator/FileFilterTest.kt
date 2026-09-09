@@ -3,12 +3,12 @@ package org.octopusden.octopus.tools.wl.validation.validator
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import org.octopusden.octopus.util.FileContentFilterConfig
-import org.octopusden.octopus.util.FileFilter
-import org.octopusden.octopus.util.FileFilterConfig
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import org.octopusden.octopus.util.FileContentFilterConfig
+import org.octopusden.octopus.util.FileFilter
+import org.octopusden.octopus.util.FileFilterConfig
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.zip.ZipFile
@@ -24,14 +24,14 @@ class FileFilterTest {
         val filter = FileFilter.prepareDirectoryFilter(
             FileFilterConfig(
                 includeDirs = emptyList(),
-                excludeDirs = emptyList()
-            )
+                excludeDirs = emptyList(),
+            ),
         )
 
         val excluded = listOf(
             Paths.get("/dir/include/File.java"),
             Paths.get("/dir/include/dir"),
-            Paths.get("dir/include/dir")
+            Paths.get("dir/include/dir"),
         )
 
         excludedTest(filter, excluded)
@@ -41,7 +41,7 @@ class FileFilterTest {
     fun directoryFilterTest() {
         val filterConfig = FileFilterConfig(
             includeDirs = listOf("**/include/**"),
-            excludeDirs = listOf("**/exclude/**")
+            excludeDirs = listOf("**/exclude/**"),
         )
         val filter = FileFilter.prepareDirectoryFilter(filterConfig)
 
@@ -65,14 +65,14 @@ class FileFilterTest {
         val filter = FileFilter.prepareDirectoryFilter(
             FileFilterConfig(
                 includeFiles = emptyList(),
-                excludeFiles = emptyList()
-            )
+                excludeFiles = emptyList(),
+            ),
         )
 
         val excluded = listOf(
             Paths.get("File.java"),
             Paths.get("Another.xml"),
-            Paths.get("WithoutExt")
+            Paths.get("WithoutExt"),
         )
 
         excludedTest(filter, excluded)
@@ -82,7 +82,7 @@ class FileFilterTest {
     fun fileFilterTest() {
         val filterConfig = FileFilterConfig(
             includeFiles = listOf("*.java"),
-            excludeFiles = listOf("*.xml")
+            excludeFiles = listOf("*.xml"),
         )
         val filter = FileFilter.prepareFileFilter(filterConfig)
 
@@ -90,19 +90,18 @@ class FileFilterTest {
             Paths.get("TestClass.java"),
         )
         val excluded = listOf(
-            Paths.get("File.xml")
+            Paths.get("File.xml"),
         )
 
         includeTest(filter, included)
         excludedTest(filter, excluded)
     }
 
-
     @Test
     fun fileFilterFilterTest() {
         val (declined, accepted) = FileFilter.filter(
             "/file-filter/file-filters.json".toResourcePath(),
-            "/file-filter/project".toResourcePath()
+            "/file-filter/project".toResourcePath(),
         )
         val expectedAccepted = listOf(
             "/file-filter/project/noroot.txt".toResourcePath(),
@@ -118,7 +117,7 @@ class FileFilterTest {
             "/file-filter/project/src/noroot.txt".toResourcePath(),
             "/file-filter/project/everywhere.txt".toResourcePath(),
             "/file-filter/project/src/dir1/dir3/certain.txt".toResourcePath(),
-            "/file-filter/project/src/dir1/dir3/everywhere.txt".toResourcePath()
+            "/file-filter/project/src/dir1/dir3/everywhere.txt".toResourcePath(),
         )
         Assertions.assertTrue(expectedAccepted.containsAll(accepted))
         Assertions.assertTrue(accepted.containsAll(expectedAccepted))
@@ -148,7 +147,7 @@ class FileFilterTest {
             .use { zipFile ->
                 val (declinedEntries, acceptedEntries) = FileFilter.filter(
                     config,
-                    zipFile
+                    zipFile,
                 )
                 val accepted = acceptedEntries.map { it.name }
                 val declined = declinedEntries.map { it.name }
@@ -163,12 +162,12 @@ class FileFilterTest {
     @Test
     fun fileContentFilterTest_empty() {
         val filterConfig = FileFilterConfig(
-            excludeFileContentFilters = listOf()
+            excludeFileContentFilters = listOf(),
         )
         val filter = FileFilter.prepareFileContentFilter(filterConfig) { it.inputStream() }
 
         val included = listOf(
-            Paths.get("SomeFile.java")
+            Paths.get("SomeFile.java"),
         )
 
         includeTest(filter, included)
@@ -179,16 +178,16 @@ class FileFilterTest {
         val fileContentConfig = listOf(
             FileContentFilterConfig(
                 applyToFiles = listOf("*.xslt", "*.java"),
-                excludeByContent = listOf("\"BRAND2Appl\"", "\"BRAND2Doc\"",)
+                excludeByContent = listOf("\"BRAND2Appl\"", "\"BRAND2Doc\""),
             ),
             FileContentFilterConfig(
                 applyToFiles = listOf("*.xslt"),
-                excludeByContent = listOf("\"BRANDAppl\"")
-            )
+                excludeByContent = listOf("\"BRANDAppl\""),
+            ),
         )
 
         val config = FileFilterConfig(
-            excludeFileContentFilters = fileContentConfig
+            excludeFileContentFilters = fileContentConfig,
         )
 
         val filter = FileFilter.prepareFileContentFilter(config) { it.inputStream() }
@@ -201,7 +200,7 @@ class FileFilterTest {
      <xsl:output method="xml" version="1.0" encoding="UTF-8" indent="yes" omit-xml-declaration="yes"/>
      <xsl:template match="/UFXMsg[MsgData/Application]">
           <UFXMsg direction="Rq" msg_type="Application" scheme="BRANDAppl">
-"""
+""",
         )
 
         excludedTest(filter, listOf(xsltFile))
@@ -212,15 +211,15 @@ class FileFilterTest {
         val fileContentConfig = listOf(
             FileContentFilterConfig(
                 applyToFiles = listOf("*.xml", "*.java"),
-                excludeByContent = listOf("\"BRAND2Appl\"", "\"BRAND2Doc\"", "\"BRAND2Profile\"", "\"BRAND2ConfigInfo\"")
+                excludeByContent = listOf("\"BRAND2Appl\"", "\"BRAND2Doc\"", "\"BRAND2Profile\"", "\"BRAND2ConfigInfo\""),
             ),
             FileContentFilterConfig(
                 applyToFiles = listOf("*.xslt"),
-                excludeByContent = listOf("\"BRAND2Appl\"", "\"BRAND2Doc\"")
-            )
+                excludeByContent = listOf("\"BRAND2Appl\"", "\"BRAND2Doc\""),
+            ),
         )
         val config = FileFilterConfig(
-            excludeFileContentFilters = fileContentConfig
+            excludeFileContentFilters = fileContentConfig,
         )
 
         val filter = FileFilter.prepareFileContentFilter(config) { it.inputStream() }
@@ -233,7 +232,7 @@ class FileFilterTest {
      <xsl:output method="xml" version="1.0" encoding="UTF-8" indent="yes" omit-xml-declaration="yes"/>
      <xsl:template match="/UFXMsg[MsgData/Application]">
           <UFXMsg direction="Rq" msg_type="Application" scheme="BRAND2Appl">
-"""
+""",
         )
         excludedTest(filter, listOf(xsltFile))
     }
@@ -285,11 +284,13 @@ class FileFilterTest {
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             .setSerializationInclusion(JsonInclude.Include.NON_NULL)
 
-        private fun String.toResourcePath(): Path = this::class.java.getResource(this)
-            ?.toURI()?.toPath() ?: throw IllegalArgumentException("There is '$this' in resources")
+        // this::class.java is String::class.java, and since JDK 9 String lives in the
+        // java.base module, whose getResource only sees resources of that module - so this
+        // resolved to null on every JDK above 8.
+        private fun String.toResourcePath(): Path = FileFilterTest::class.java.getResource(this)
+            ?.toURI()?.toPath() ?: throw IllegalArgumentException("There is no '$this' in resources")
 
-        private fun <T> String.loadConfigFromResources(aClass: Class<T>): T {
-            return mapper.readValue(this::class.java.getResource(this), aClass)
-        }
+        private fun <T> String.loadConfigFromResources(aClass: Class<T>): T =
+            mapper.readValue(FileFilterTest::class.java.getResource(this), aClass)
     }
 }

@@ -8,12 +8,7 @@ import java.util.regex.Pattern
 class TextTokenHandler(private val validationRules: List<FileValidationRule>, private val exceptions: List<String>) {
     private val pattern: Pattern = Pattern.compile(PatternCalculator().calculate(exceptions))
 
-    fun testTokenAgainstRules(
-        token: String,
-        line: Int,
-        startPos: Int,
-        endPos: Int,
-    ): ValidationProblem? {
+    fun testTokenAgainstRules(token: String, line: Int, startPos: Int, endPos: Int): ValidationProblem? {
         val replacer = Replacer(pattern, token)
         val tokenWithPlaceholder = replacer.replace()
         for (rule in validationRules) {
@@ -28,7 +23,7 @@ class TextTokenHandler(private val validationRules: List<FileValidationRule>, pr
                     replaceBoundedRule(
                         tokenWithPlaceholder,
                         rule.rule,
-                        rule.suggestedReplacement
+                        rule.suggestedReplacement,
                     )
                 } else {
                     tokenWithPlaceholder.replace(rule.rule, rule.suggestedReplacement)
@@ -40,7 +35,7 @@ class TextTokenHandler(private val validationRules: List<FileValidationRule>, pr
                     "",
                     token,
                     rule.rule,
-                    suggestedReplacement
+                    suggestedReplacement,
                 )
             }
         }
@@ -105,7 +100,7 @@ class TextTokenHandler(private val validationRules: List<FileValidationRule>, pr
         fun replace(): String {
             val matcher: Matcher = pattern.matcher(token)
             while (matcher.find()) {
-                for (i in  0.. matcher.groupCount())  {
+                for (i in 0..matcher.groupCount()) {
                     val element = matcher.group(i)
                     if (element != null) {
                         logger.debug("Adding for replacing ${i}th $element")
@@ -125,16 +120,12 @@ class TextTokenHandler(private val validationRules: List<FileValidationRule>, pr
             }
             return tokengReplacing
         }
-
     }
 
     companion object {
         const val PLACEHOLDER = "$#WL_PLACEHOLDER#$"
         private val logger = LoggerFactory.getLogger(TextTokenHandler::class.java)
     }
-
 }
 
-private fun String.replaceBack(replacer: TextTokenHandler.Replacer): String {
-    return replacer.replaceBack(this)
-}
+private fun String.replaceBack(replacer: TextTokenHandler.Replacer): String = replacer.replaceBack(this)
