@@ -314,8 +314,9 @@ internal class WLSourceValidatorTest {
     fun `opaque content is not scanned, a compiled binary still is`(@TempDir reportDir: Path) {
         val root = reportDir.resolve("project").createDirectories()
         val hit = "internal-brand2-build".toByteArray(StandardCharsets.US_ASCII)
-        // gzip magic bytes, whatever follows them: real compressed content cannot hold plain text
-        root.resolve("archive.gz").writeBytes(byteArrayOf(0x1F, 0x8B.toByte(), 0x08) + hit)
+        // a gzip header - magic bytes, deflate method, and the zero MTIME that makes it binary too:
+        // a signature alone is not enough, opaque content must also be binary
+        root.resolve("archive.gz").writeBytes(byteArrayOf(0x1F, 0x8B.toByte(), 0x08, 0, 0, 0, 0, 0, 0, 0x03) + hit)
         // NUL bytes make it binary, but its string constants are in the clear and must be scanned
         root.resolve("sentinel-cli").writeBytes(ByteArray(16) + "X".repeat(200).toByteArray() + hit)
 
@@ -329,6 +330,24 @@ internal class WLSourceValidatorTest {
         val errors = reportDir.resolve("errors.txt").toFile().readText()
         assertTrue(errors.contains("sentinel-cli:offset="), "The binary's string constant must be found, was $errors")
         assertFalse(errors.contains("archive.gz"), "Opaque content must not be scanned, was $errors")
+    }
+
+    @Test
+    fun `text whose first bytes look like a media signature is still scanned`(@TempDir reportDir: Path) {
+        val root = reportDir.resolve("project").createDirectories()
+        // every one of these is printable ASCII that also opens a signature in the opaque table:
+        // an ID3 tag, the WEBP form type at offset 8, and the GIF header
+        root.resolve("ids.csv").writeText("ID3,name,internal-brand2-build\n")
+        root.resolve("urls.csv").writeText("id,name,WEBPurl,internal-brand2-build\n")
+        root.resolve("frames.txt").writeText("GIF89a frame list of internal-brand2-build\n")
+
+        val skipped = report(root, reportDir)
+
+        assertFalse(skipped.contains("unscanned"), "No text file may be classified opaque, was $skipped")
+        val errors = reportDir.resolve("errors.txt").toFile().readText()
+        listOf("ids.csv", "urls.csv", "frames.txt").forEach { file ->
+            assertTrue(errors.contains(file), "$file must be scanned and reported, was $errors")
+        }
     }
 
     private fun report(sourceRoot: Path, reportDir: Path): String {

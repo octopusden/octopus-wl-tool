@@ -5,8 +5,9 @@ import org.octopusden.octopus.components.automation.task.withContext
 import org.slf4j.LoggerFactory
 import java.io.InputStream
 import java.util.concurrent.CountDownLatch
-import java.util.concurrent.Executors
+import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.Semaphore
+import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
@@ -27,8 +28,13 @@ class CopyrightValidator @JvmOverloads constructor(
     /**
      * Per instance, not per [validate] call: a caller that validates many small inputs - every entry of
      * an archive, every file of a source tree - otherwise creates two thread pools per input and never
-     * awaits their termination. Daemon threads, so an idle validator keeps no JVM alive and the class
-     * needs no lifecycle in its public API.
+     * awaits their termination.
+     *
+     * Idle threads time out and core threads are not exempt, so the pools shrink back to nothing on
+     * their own and the class needs no lifecycle in its public API. A fixed pool would not: this runs
+     * inside the Gradle daemon, which outlives the build, and every build constructs a new validator -
+     * its threads would accumulate there for as long as the daemon lives. Daemon threads only keep the
+     * JVM from being held open; they do nothing about piling up inside one that stays.
      */
     private val taskPool = daemonPool("wl-copyright-task")
     private val timeoutPool = daemonPool("wl-copyright-timeout")
@@ -73,9 +79,15 @@ class CopyrightValidator @JvmOverloads constructor(
         return errors
     }
 
-    private fun daemonPool(name: String) = Executors.newFixedThreadPool(threadCount) { runnable ->
+    private fun daemonPool(name: String) = ThreadPoolExecutor(
+        threadCount,
+        threadCount,
+        IDLE_THREAD_TIMEOUT_SEC,
+        TimeUnit.SECONDS,
+        LinkedBlockingQueue(),
+    ) { runnable ->
         Thread(runnable, name).apply { isDaemon = true }
-    }
+    }.apply { allowCoreThreadTimeOut(true) }
 
     private fun submit(semaphore: Semaphore, nLine: Int, string: String, errors: MutableList<ValidationProblem>) {
         timeoutPool.submit {
@@ -179,6 +191,7 @@ class CopyrightValidator @JvmOverloads constructor(
             }
         }
 
+        private const val IDLE_THREAD_TIMEOUT_SEC: Long = 30
         private const val STRING_VALIDATION_TIMEOUT_SEC_DEFAULT: Long = 30
         private const val THREAD_COUNT_DEFAULT = 20
         private const val VALIDATION_TOKEN_LENGTH = 80
