@@ -274,6 +274,7 @@ internal class WLSourceValidatorTest {
             ).validate(),
             errorsReport,
             reportDir.resolve("success.txt").toFile(),
+            reportDir.resolve("skipped.txt").toFile(),
             "1.0",
         )
 
@@ -292,6 +293,59 @@ internal class WLSourceValidatorTest {
         assertTrue(record.startsWith("sentinel-cli:offset=4305 "), "Record must locate the hit by offset: $record")
         assertTrue(record.contains("brand2"), "Record must show the matched literal: $record")
         assertTrue(record.endsWith("mustn't match rule: \"brand2\""), "Record must name the rule: $record")
+    }
+
+    @Test
+    fun `a file over the size limit is not scanned and says so in the skipped report`(@TempDir reportDir: Path) {
+        val root = reportDir.resolve("project").createDirectories()
+        val oversized = root.resolve("oversized.txt")
+        val filler = "-".repeat(1000)
+        oversized.writeText(filler.repeat((WLSourceValidator.MAX_FILE_SIZE / filler.length).toInt() + 1) + "internal-brand2-build")
+
+        val skipped = report(root, reportDir)
+
+        assertTrue(
+            skipped.lines().any { it.startsWith("oversized.txt: unscanned: size (") },
+            "Oversized file must be reported as unscanned, was $skipped",
+        )
+    }
+
+    @Test
+    fun `opaque content is not scanned, a compiled binary still is`(@TempDir reportDir: Path) {
+        val root = reportDir.resolve("project").createDirectories()
+        val hit = "internal-brand2-build".toByteArray(StandardCharsets.US_ASCII)
+        // gzip magic bytes, whatever follows them: real compressed content cannot hold plain text
+        root.resolve("archive.gz").writeBytes(byteArrayOf(0x1F, 0x8B.toByte(), 0x08) + hit)
+        // NUL bytes make it binary, but its string constants are in the clear and must be scanned
+        root.resolve("sentinel-cli").writeBytes(ByteArray(16) + "X".repeat(200).toByteArray() + hit)
+
+        val skipped = report(root, reportDir)
+
+        assertTrue(
+            skipped.lines().any { it == "archive.gz: unscanned: opaque content" },
+            "Opaque file must be reported as unscanned, was $skipped",
+        )
+        assertFalse(skipped.contains("sentinel-cli"), "A compiled binary must stay scanned, was $skipped")
+        val errors = reportDir.resolve("errors.txt").toFile().readText()
+        assertTrue(errors.contains("sentinel-cli:offset="), "The binary's string constant must be found, was $errors")
+        assertFalse(errors.contains("archive.gz"), "Opaque content must not be scanned, was $errors")
+    }
+
+    private fun report(sourceRoot: Path, reportDir: Path): String {
+        val skippedReport = reportDir.resolve("skipped.txt").toFile()
+        WLReportGenerator().printValidationReport(
+            WLSourceValidator(
+                sourceRoot = sourceRoot,
+                validationConfig = getResourceAsPath("/prod-like-config/mapping.json"),
+                filterConfig = filterConfig,
+                forbiddenPatterns = forbiddenPatterns,
+            ).validate(),
+            reportDir.resolve("errors.txt").toFile(),
+            reportDir.resolve("success.txt").toFile(),
+            skippedReport,
+            "1.0",
+        )
+        return skippedReport.readText()
     }
 
     @Test

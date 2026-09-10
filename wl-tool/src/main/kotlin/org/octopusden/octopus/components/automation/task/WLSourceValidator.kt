@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory
 import java.io.BufferedReader
 import java.io.FileReader
 import java.io.FilterInputStream
+import java.io.IOException
 import java.io.InputStream
 import java.io.Reader
 import java.nio.file.Files
@@ -47,25 +48,30 @@ class WLSourceValidator(private val sourceRoot: Path, validationConfig: Path, va
 
     fun validate(): ProjectValidationResult {
         val fileContentProblems: MutableMap<Path, List<ValidationProblem>> = HashMap()
+        val unscannedFiles: MutableMap<Path, String> = LinkedHashMap()
 
         val (skippedFiles, filesToCheck) = FileFilter.filter(filterConfig.toAbsolutePath(), sourceRoot)
         val fileNameProblems: Map<String, String> = checkForNameProblems(filesToCheck)
 
         filesToCheck.forEachIndexed { index, file ->
-            logger.info("Validate $file")
-            val binary = isBinary(file)
-            val checkFileResult = checkFileContentWithDoubleCheck(file, binary)
-            val copyRightValidationResult = if (file.isRegularFile()) {
-                val sizeKB = file.fileSize().div(1000)
-                if (logger.isTraceEnabled) {
-                    logger.trace("Size $file: ${sizeKB}KB")
-                }
-                validateCopyright(file, binary)
+            val unscannedReason = unscannedReason(file)
+            if (unscannedReason != null) {
+                // loud on purpose: an unscanned file makes a clean result mean "found nothing here",
+                // not "there is nothing here", and that difference is the whole point of the report
+                logger.warn("Not scanning $file: $unscannedReason")
+                unscannedFiles[file.relativizeAgainstSourceRoot()] = unscannedReason
             } else {
-                emptyList()
-            }
-            if (checkFileResult.second.isNotEmpty() || copyRightValidationResult.isNotEmpty()) {
-                fileContentProblems[checkFileResult.first] = checkFileResult.second + copyRightValidationResult
+                logger.info("Validate $file")
+                val binary = FileContent.isBinary(file)
+                val checkFileResult = checkFileContentWithDoubleCheck(file, binary)
+                val copyRightValidationResult = if (file.isRegularFile()) {
+                    validateCopyright(file, binary)
+                } else {
+                    emptyList()
+                }
+                if (checkFileResult.second.isNotEmpty() || copyRightValidationResult.isNotEmpty()) {
+                    fileContentProblems[checkFileResult.first] = checkFileResult.second + copyRightValidationResult
+                }
             }
             if ((index + 1) % 100 == 0) {
                 logger.info("Validated ${index + 1} files")
@@ -84,14 +90,32 @@ class WLSourceValidator(private val sourceRoot: Path, validationConfig: Path, va
                 skippedFiles.map {
                     sourceRoot.relativize(it)
                 },
+                unscannedFiles,
             )
         logger.info("Validation finished successfully")
 
         return projectValidationResult
     }
 
+    /**
+     * Why a file's content is not looked at, or null when it is. The single size boundary of the
+     * validator lives here: an unbounded scan of a large file is an out-of-memory failure, not a slow
+     * build, and every content check below reads the whole file.
+     */
+    private fun unscannedReason(file: Path): String? {
+        val size = if (file.isRegularFile()) file.fileSize() else 0
+        return when {
+            size > MAX_FILE_SIZE -> "unscanned: size ($size bytes, limit $MAX_FILE_SIZE)"
+            FileContent.isOpaque(file) -> "unscanned: opaque content"
+            else -> null
+        }
+    }
+
     @JvmOverloads
-    fun checkFileContentWithDoubleCheck(fileToCheck: Path, binary: Boolean = isBinary(fileToCheck)): Pair<Path, List<ValidationProblem>> {
+    fun checkFileContentWithDoubleCheck(
+        fileToCheck: Path,
+        binary: Boolean = FileContent.isBinary(fileToCheck),
+    ): Pair<Path, List<ValidationProblem>> {
         val checkFileContent = checkFileContent(fileToCheck, binary)
         return if (checkFileContent.second.isNotEmpty()) {
             checkFileContent
@@ -126,11 +150,6 @@ class WLSourceValidator(private val sourceRoot: Path, validationConfig: Path, va
     }
 
     private fun checkFileContentLight(filePath: Path, binary: Boolean): Pair<Path, List<ValidationProblem>> {
-        val fileSize = filePath.toFile().length()
-        if (fileSize >= MAX_FILE_SIZE) {
-            logger.info("skip $filePath due to size=$fileSize")
-            return filePath.relativizeAgainstSourceRoot() to emptyList()
-        }
         if (binary) {
             return filePath.relativizeAgainstSourceRoot() to checkBinaryContentLight(filePath)
         }
@@ -193,7 +212,7 @@ class WLSourceValidator(private val sourceRoot: Path, validationConfig: Path, va
     }
 
     @JvmOverloads
-    fun checkFileContent(file: Path, binary: Boolean = isBinary(file)): Pair<Path, List<ValidationProblem>> {
+    fun checkFileContent(file: Path, binary: Boolean = FileContent.isBinary(file)): Pair<Path, List<ValidationProblem>> {
         logger.debug("Start validation for file={}", file.relativizeAgainstSourceRoot())
         if (binary) {
             return when (val result = processBinaryFile(file)) {
@@ -371,31 +390,7 @@ class WLSourceValidator(private val sourceRoot: Path, validationConfig: Path, va
         private val logger = LoggerFactory.getLogger(WLSourceValidator::class.java)
         private val objectMapper = jacksonObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
 
-        private const val MAX_FILE_SIZE = 10000000
-        private const val BINARY_PROBE_SIZE = 8192
-        private const val ZERO_BYTE: Byte = 0
-
-        /**
-         * Content-based check, on purpose: the files this matters for (compiled executables) often have
-         * no extension at all.
-         */
-        internal fun isBinary(file: Path): Boolean = try {
-            file.inputStream().buffered().use { input ->
-                val probe = ByteArray(BINARY_PROBE_SIZE)
-                var probed = 0
-                while (probed < probe.size) {
-                    val read = input.read(probe, probed, probe.size - probed)
-                    if (read < 0) {
-                        break
-                    }
-                    probed += read
-                }
-                (0 until probed).any { probe[it] == ZERO_BYTE }
-            }
-        } catch (ex: Throwable) {
-            logger.warn("Can't probe file=$file for binary content", ex)
-            false
-        }
+        internal const val MAX_FILE_SIZE = 20000000L
 
         private fun validateConfigFiles(vararg paths: Path) {
             paths.forEach { p ->
@@ -458,6 +453,7 @@ data class ProjectValidationResult(
     val fileContentProblems: Map<Path, List<ValidationProblem>>,
     val suggestedReplacements: Map<String, String>,
     val skippedFilesAndFolders: List<Path>,
+    val unscannedFiles: Map<Path, String> = emptyMap(),
 ) {
     fun isNotEmpty(): Boolean = fileNameProblems.isNotEmpty() || fileContentProblems.isNotEmpty()
     fun isEmpty(): Boolean = !isNotEmpty()
@@ -583,4 +579,63 @@ internal class PrintableRunsInputStream(source: InputStream) : FilterInputStream
         private const val PRINTABLE_FIRST = 0x20
         private const val PRINTABLE_LAST = 0x7E
     }
+}
+
+/**
+ * Tells the kinds of content apart, by content and not by file name: the files this matters for
+ * (compiled executables) often have no extension at all.
+ */
+internal object FileContent {
+    /** Content that is not text. It is validated - as its printable runs rather than as lines. */
+    fun isBinary(file: Path): Boolean = probe(file, BINARY_PROBE_SIZE).any { it == ZERO_BYTE }
+
+    /**
+     * Content in which a restricted item cannot appear at all, because the format encodes text away:
+     * compressed streams and media codecs. Not validated - looking would find nothing by construction.
+     *
+     * Archives are deliberately absent: they are to be unpacked and their entries validated, see #21.
+     */
+    fun isOpaque(file: Path): Boolean {
+        val hex = probe(file, OPAQUE_PROBE_SIZE).joinToString("") { "%02X".format(it) }
+        return opaqueSignatures.any { (offset, signature) -> hex.startsWith(signature, offset * 2) }
+    }
+
+    private fun probe(file: Path, size: Int): ByteArray = try {
+        val probe = ByteArray(size)
+        var probed = 0
+        file.inputStream().buffered().use { input ->
+            var read = 0
+            while (probed < size && read >= 0) {
+                read = input.read(probe, probed, size - probed)
+                probed += maxOf(read, 0)
+            }
+        }
+        probe.copyOf(probed)
+    } catch (ex: IOException) {
+        log.warn("Can't probe file=$file", ex)
+        ByteArray(0)
+    }
+
+    private val log = LoggerFactory.getLogger(FileContent::class.java)
+
+    private const val BINARY_PROBE_SIZE = 8192
+    private const val OPAQUE_PROBE_SIZE = 16
+    private const val ZERO_BYTE: Byte = 0
+
+    /** Both formats put their identifying bytes after a header, not at the start of the file. */
+    private const val RIFF_FORM_OFFSET = 8
+    private const val FTYP_BOX_OFFSET = 4
+
+    private val opaqueSignatures = listOf(
+        0 to "89504E47", // PNG
+        0 to "FFD8FF", // JPEG
+        0 to "47494638", // GIF
+        RIFF_FORM_OFFSET to "57454250", // WebP
+        FTYP_BOX_OFFSET to "66747970", // MP4 and relatives
+        0 to "494433", // MP3 with an ID3 tag
+        0 to "FFFB", // MP3 frame header
+        0 to "1F8B", // gzip
+        0 to "FD377A585A00", // xz
+        0 to "425A68", // bzip2
+    )
 }

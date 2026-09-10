@@ -50,6 +50,7 @@ abstract class BasicWLValidationTask : DefaultTask() {
             validationResult,
             getSourceValidationErrorsFile(reportDir),
             getSourceValidationSuccessFile(reportDir),
+            getSourceValidationSkippedFile(reportDir),
             version
         )
         val fullMappingJson = File(reportDir, "full-mapping.json")
@@ -67,6 +68,9 @@ abstract class BasicWLValidationTask : DefaultTask() {
 
     fun getSourceValidationSuccessFile(reportDir: File) =
         File(reportDir, "$SOURCE_VALIDATION_PREFIX-success.txt")
+
+    fun getSourceValidationSkippedFile(reportDir: File) =
+        File(reportDir, "$SOURCE_VALIDATION_PREFIX-skipped.txt")
 
     companion object {
         protected val log = LoggerFactory.getLogger(BasicWLValidationTask::class.java)

@@ -7,7 +7,6 @@ import java.io.InputStream
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.Semaphore
-import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
@@ -25,10 +24,24 @@ class CopyrightValidator @JvmOverloads constructor(
      */
     private val patterns = patterns.map { narrowToMatch(it) to it.pattern }
 
-    fun validate(content: InputStream): List<ValidationProblem> = content.bufferedReader().use { bufferedReader ->
+    /**
+     * Per instance, not per [validate] call: a caller that validates many small inputs - every entry of
+     * an archive, every file of a source tree - otherwise creates two thread pools per input and never
+     * awaits their termination. Daemon threads, so an idle validator keeps no JVM alive and the class
+     * needs no lifecycle in its public API.
+     */
+    private val taskPool = daemonPool("wl-copyright-task")
+    private val timeoutPool = daemonPool("wl-copyright-timeout")
 
-        val taskPool = Executors.newFixedThreadPool(threadCount) as ThreadPoolExecutor
-        val timeoutPool = Executors.newFixedThreadPool(threadCount) as ThreadPoolExecutor
+    fun validate(content: InputStream): List<ValidationProblem> {
+        // an empty pattern list is how the configuration says "no copyright validation"; without this the
+        // whole input is still read and every line dispatched to the pools, to match against nothing
+        if (patterns.isEmpty()) {
+            return emptyList()
+        }
+        // the stream belongs to the caller: closing it forced consumers to copy every input to a temp file
+        val bufferedReader = content.bufferedReader()
+
         val permits = threadCount * 5
         val semaphore = Semaphore(permits, true)
         log.trace("Thread Pool size $threadCount")
@@ -45,7 +58,7 @@ class CopyrightValidator @JvmOverloads constructor(
             if (contains.isEmpty() || contains.any { line.contains(it, true) }) {
                 log.debug("Submit validation, line $lineNumber")
                 semaphore.acquire()
-                submit(timeoutPool, taskPool, semaphore, lineNumber, line, errors)
+                submit(semaphore, lineNumber, line, errors)
             }
 
             line = bufferedReader.readLine()
@@ -56,24 +69,18 @@ class CopyrightValidator @JvmOverloads constructor(
             TimeUnit.MILLISECONDS.sleep(100)
         }
 
-        timeoutPool.shutdown()
-        taskPool.shutdown()
-
         log.info("Scanned $lineNumber strings")
-        errors
+        return errors
     }
 
-    private fun submit(
-        timeoutPool: ThreadPoolExecutor,
-        taskPool: ThreadPoolExecutor,
-        semaphore: Semaphore,
-        nLine: Int,
-        string: String,
-        errors: MutableList<ValidationProblem>,
-    ) {
+    private fun daemonPool(name: String) = Executors.newFixedThreadPool(threadCount) { runnable ->
+        Thread(runnable, name).apply { isDaemon = true }
+    }
+
+    private fun submit(semaphore: Semaphore, nLine: Int, string: String, errors: MutableList<ValidationProblem>) {
         timeoutPool.submit {
             val start = CountDownLatch(1)
-            val future = submit(taskPool, start, nLine, string, errors)
+            val future = submit(start, nLine, string, errors)
             start.await()
 
             try {
@@ -91,13 +98,7 @@ class CopyrightValidator @JvmOverloads constructor(
         }
     }
 
-    private fun submit(
-        taskPool: ThreadPoolExecutor,
-        start: CountDownLatch,
-        nLine: Int,
-        string: String,
-        errors: MutableList<ValidationProblem>,
-    ) = taskPool.submit {
+    private fun submit(start: CountDownLatch, nLine: Int, string: String, errors: MutableList<ValidationProblem>) = taskPool.submit {
         start.countDown()
         var validationProblem: ValidationProblem? = null
         try {
