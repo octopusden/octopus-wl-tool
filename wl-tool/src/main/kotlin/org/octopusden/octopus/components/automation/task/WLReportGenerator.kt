@@ -52,6 +52,9 @@ public class WLReportGenerator {
     /**
      * Written always, including when nothing was skipped: an absent file cannot be told apart from
      * "everything was scanned", and that is exactly the distinction this report exists for.
+     *
+     * A file the configuration excluded and a file one of whose checks did not run are different
+     * things, so each line says which it is rather than putting both under one word.
      */
     private fun printSkippedReport(validationResult: ProjectValidationResult, skippedReportFile: File, version: String) {
         logger.info("Publishing skipped files report to $skippedReportFile")
@@ -60,7 +63,7 @@ public class WLReportGenerator {
             validationResult.skippedFilesAndFolders.forEach { file ->
                 out.println("${file.forReport()}: excluded by filter")
             }
-            validationResult.unscannedFiles.forEach { (file, reason) ->
+            validationResult.notScanned.forEach { (file, reason) ->
                 out.println("${file.forReport()}: $reason")
             }
         }

@@ -20,6 +20,8 @@ Glossary of the terms this project uses. Vocabulary only: no implementation deta
 
 **Binary** — content that is not text: it holds bytes no text encoding accounts for. Binary content **is** validated. A compiled executable is binary, yet carries its string constants in the clear, and a restricted item can sit in one; such content is read as its sequences of printable characters rather than as lines.
 
-**Opaque** — content in which a restricted item cannot appear at all, because the format encodes text away: compressed streams, media codecs. Opaque content is not validated, since looking would find nothing by construction. Opaque is narrower than binary: every opaque file is binary, most binary files are not opaque.
+**Unscanned** — a file whose content was not looked at, although the configuration did not exclude it. Distinct from *excluded*, because it is the tool's decision rather than the configuration's.
 
-**Unscanned** — a file whose content was not looked at, although the configuration did not exclude it: it is opaque, or too large to read safely. Distinct from *excluded*, because it is the tool's decision rather than the configuration's, and it is the case a reader of a clean result needs to know about — a clean result over an unscanned file means "found nothing", not "there is nothing".
+**Partially scanned** — a file some but not all of whose checks ran. A file too large for a check that needs it whole is still validated by the checks that read it as a stream.
+
+Both are reported, and reported apart from each other. A clean result over content that was not read means "found nothing", not "there is nothing", and only the report can carry that difference. A file's format is never grounds for skipping it: a compiled executable carries its string constants in the clear, and so do the metadata of compressed and media containers - an image's text chunks, an archive's stored file names.

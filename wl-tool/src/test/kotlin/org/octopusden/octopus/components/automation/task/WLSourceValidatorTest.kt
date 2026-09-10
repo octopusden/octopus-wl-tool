@@ -296,59 +296,56 @@ internal class WLSourceValidatorTest {
     }
 
     @Test
-    fun `a file over the size limit is not scanned and says so in the skipped report`(@TempDir reportDir: Path) {
+    fun `plaintext metadata of a media container is scanned`(@TempDir reportDir: Path) {
         val root = reportDir.resolve("project").createDirectories()
-        val oversized = root.resolve("oversized.txt")
-        val filler = "-".repeat(1000)
-        oversized.writeText(filler.repeat((WLSourceValidator.MAX_FILE_SIZE / filler.length).toInt() + 1) + "internal-brand2-build")
-
-        val skipped = report(root, reportDir)
-
-        assertTrue(
-            skipped.lines().any { it.startsWith("oversized.txt: unscanned: size (") },
-            "Oversized file must be reported as unscanned, was $skipped",
+        // a PNG tEXt chunk is uncompressed ASCII - Photoshop, ImageMagick and matplotlib all write one
+        val text = "tEXtSoftware\u0000internal-brand2-build 4.0"
+        root.resolve("shot.png").writeBytes(
+            byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A) +
+                byteArrayOf(0, 0, 0, 0x0D) + "IHDR".toByteArray() + ByteArray(13) +
+                byteArrayOf(0, 0, 0, text.length.toByte()) + text.toByteArray(StandardCharsets.ISO_8859_1),
         )
-    }
-
-    @Test
-    fun `opaque content is not scanned, a compiled binary still is`(@TempDir reportDir: Path) {
-        val root = reportDir.resolve("project").createDirectories()
-        val hit = "internal-brand2-build".toByteArray(StandardCharsets.US_ASCII)
-        // a gzip header - magic bytes, deflate method, and the zero MTIME that makes it binary too:
-        // a signature alone is not enough, opaque content must also be binary
-        root.resolve("archive.gz").writeBytes(byteArrayOf(0x1F, 0x8B.toByte(), 0x08, 0, 0, 0, 0, 0, 0, 0x03) + hit)
-        // NUL bytes make it binary, but its string constants are in the clear and must be scanned
-        root.resolve("sentinel-cli").writeBytes(ByteArray(16) + "X".repeat(200).toByteArray() + hit)
-
-        val skipped = report(root, reportDir)
-
-        assertTrue(
-            skipped.lines().any { it == "archive.gz: unscanned: opaque content" },
-            "Opaque file must be reported as unscanned, was $skipped",
+        // gzip stores the original file name verbatim when FLG bit 3 is set, which plain `gzip file` does
+        root.resolve("plan.gz").writeBytes(
+            byteArrayOf(0x1F, 0x8B.toByte(), 0x08, 0x08, 0, 0, 0, 0, 0, 0x03) +
+                "internal-brand2-build.txt".toByteArray() + byteArrayOf(0) + ByteArray(32),
         )
-        assertFalse(skipped.contains("sentinel-cli"), "A compiled binary must stay scanned, was $skipped")
-        val errors = reportDir.resolve("errors.txt").toFile().readText()
-        assertTrue(errors.contains("sentinel-cli:offset="), "The binary's string constant must be found, was $errors")
-        assertFalse(errors.contains("archive.gz"), "Opaque content must not be scanned, was $errors")
-    }
-
-    @Test
-    fun `text whose first bytes look like a media signature is still scanned`(@TempDir reportDir: Path) {
-        val root = reportDir.resolve("project").createDirectories()
-        // every one of these is printable ASCII that also opens a signature in the opaque table:
-        // an ID3 tag, the WEBP form type at offset 8, and the GIF header
-        root.resolve("ids.csv").writeText("ID3,name,internal-brand2-build\n")
-        root.resolve("urls.csv").writeText("id,name,WEBPurl,internal-brand2-build\n")
-        root.resolve("frames.txt").writeText("GIF89a frame list of internal-brand2-build\n")
 
         val skipped = report(root, reportDir)
+        val errors = errorsReport(reportDir)
 
-        assertFalse(skipped.contains("unscanned"), "No text file may be classified opaque, was $skipped")
-        val errors = reportDir.resolve("errors.txt").toFile().readText()
-        listOf("ids.csv", "urls.csv", "frames.txt").forEach { file ->
-            assertTrue(errors.contains(file), "$file must be scanned and reported, was $errors")
+        assertFalse(skipped.contains("unscanned"), "A container's metadata is plain text, was $skipped")
+        listOf("shot.png", "plan.gz").forEach { file ->
+            assertTrue(errors.contains(file), "$file carries the token in the clear, was $errors")
         }
     }
+
+    @Test
+    fun `a large text file is scanned and only its double check is skipped`(@TempDir reportDir: Path) {
+        val root = reportDir.resolve("project").createDirectories()
+        val large = root.resolve("dump.sql")
+        val filler = "insert into t values ('harmless payload of no interest at all');\n".repeat(300)
+        large.writeText(
+            buildString {
+                while (length < WLSourceValidator.LIGHT_CHECK_MAX_FILE_SIZE + filler.length) {
+                    append(filler)
+                }
+                append("insert into t values ('internal-brand2-build');\n")
+            },
+        )
+
+        val skipped = report(root, reportDir)
+        val errors = errorsReport(reportDir)
+
+        assertTrue(errors.contains("dump.sql"), "A streamed scan has no size limit, was $errors")
+        assertTrue(
+            skipped.lines().any { it.startsWith("dump.sql: partially scanned") },
+            "The skipped double check must be named as such, not as an unscanned file, was $skipped",
+        )
+    }
+
+    private fun errorsReport(reportDir: Path) = reportDir.resolve("errors.txt").toFile()
+        .let { if (it.exists()) it.readText() else "" }
 
     private fun report(sourceRoot: Path, reportDir: Path): String {
         val skippedReport = reportDir.resolve("skipped.txt").toFile()

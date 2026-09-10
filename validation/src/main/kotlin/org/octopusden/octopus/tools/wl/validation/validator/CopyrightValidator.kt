@@ -76,7 +76,12 @@ class CopyrightValidator @JvmOverloads constructor(
         }
 
         log.info("Scanned $lineNumber strings")
-        return errors
+        // a copy under the same lock the appenders take: the permit is released as soon as a task is
+        // cancelled, so a task that timed out can still be inside its finally when this returns, and
+        // handing out the live list risks a ConcurrentModificationException in the caller. It does not
+        // make the straggler's finding appear here - a line that timed out is already given up on, and
+        // holding the permit until the task really ended would let one hung line stall the file.
+        return synchronized(errors) { errors.toList() }
     }
 
     private fun daemonPool(name: String) = ThreadPoolExecutor(
