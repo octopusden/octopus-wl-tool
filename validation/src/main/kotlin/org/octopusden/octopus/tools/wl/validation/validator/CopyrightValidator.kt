@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory
 import java.io.InputStream
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.Semaphore
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
@@ -94,23 +95,41 @@ class CopyrightValidator @JvmOverloads constructor(
         Thread(runnable, name).apply { isDaemon = true }
     }.apply { allowCoreThreadTimeOut(true) }
 
+    /**
+     * The permit is released for every path out of the wrapper, not just the one through [Future.get]:
+     * a throw while submitting the task or while awaiting its start - an interrupt, or a failure to
+     * create a pool thread, which is the very condition a size limit exists to avoid - would otherwise
+     * leave [validate] spinning on a permit that is never coming back.
+     */
     private fun submit(semaphore: Semaphore, nLine: Int, string: String, errors: MutableList<ValidationProblem>) {
-        timeoutPool.submit {
-            val start = CountDownLatch(1)
-            val future = submit(start, nLine, string, errors)
-            start.await()
-
-            try {
-                future.get(stringValidationTimeoutSec, TimeUnit.SECONDS)
-            } catch (e: TimeoutException) {
-                log.debug("Validation timeout, line $nLine")
-            } finally {
-                if (future.cancel(true)) {
-                    log.trace("Validation canceled, line: $nLine")
-                } else {
-                    log.trace("Validation already finished, line: $nLine")
+        try {
+            timeoutPool.submit {
+                try {
+                    awaitValidation(nLine, string, errors)
+                } finally {
+                    semaphore.release()
                 }
-                semaphore.release()
+            }
+        } catch (ex: RejectedExecutionException) {
+            semaphore.release()
+            throw ex
+        }
+    }
+
+    private fun awaitValidation(nLine: Int, string: String, errors: MutableList<ValidationProblem>) {
+        val start = CountDownLatch(1)
+        val future = submit(start, nLine, string, errors)
+        start.await()
+
+        try {
+            future.get(stringValidationTimeoutSec, TimeUnit.SECONDS)
+        } catch (e: TimeoutException) {
+            log.debug("Validation timeout, line $nLine")
+        } finally {
+            if (future.cancel(true)) {
+                log.trace("Validation canceled, line: $nLine")
+            } else {
+                log.trace("Validation already finished, line: $nLine")
             }
         }
     }

@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.StringReader
 import java.nio.charset.StandardCharsets
+import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.io.path.createDirectories
@@ -341,6 +342,21 @@ internal class WLSourceValidatorTest {
         assertTrue(
             skipped.lines().any { it.startsWith("dump.sql: partially scanned") },
             "The skipped double check must be named as such, not as an unscanned file, was $skipped",
+        )
+    }
+
+    @Test
+    fun `a file that cannot be read is reported as unscanned, not as clean`(@TempDir reportDir: Path) {
+        val root = reportDir.resolve("project").createDirectories()
+        // a dangling symlink: the walk lists it, every read of it throws. Malformed encoding would not
+        // do - the readers here replace undecodable bytes with U+FFFD rather than failing
+        Files.createSymbolicLink(root.resolve("dangling.txt"), root.resolve("gone.txt"))
+
+        val skipped = report(root, reportDir)
+
+        assertTrue(
+            skipped.lines().any { it.startsWith("dangling.txt: unscanned: unreadable") },
+            "A file that threw on the way in must be named, was $skipped",
         )
     }
 
