@@ -205,6 +205,7 @@ internal class WLSourceValidatorTest {
                 Paths.get("dir-to-exclude/SomeExcludedClass.java"),
                 Paths.get("OneMoreExcludedClass.java"),
             ),
+            notScanned = emptyMap(),
         )
         val actual = validator.validate()
 
