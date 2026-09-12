@@ -47,30 +47,37 @@ class WLSourceValidator(private val sourceRoot: Path, validationConfig: Path, va
 
     fun validate(): ProjectValidationResult {
         val fileContentProblems: MutableMap<Path, List<ValidationProblem>> = HashMap()
+        val notScanned: MutableMap<Path, String> = LinkedHashMap()
+        val unreadable: MutableMap<Path, String> = LinkedHashMap()
 
         val (skippedFiles, filesToCheck) = FileFilter.filter(filterConfig.toAbsolutePath(), sourceRoot)
         val fileNameProblems: Map<String, String> = checkForNameProblems(filesToCheck)
 
         filesToCheck.forEachIndexed { index, file ->
             logger.info("Validate $file")
-            val binary = isBinary(file)
-            val checkFileResult = checkFileContentWithDoubleCheck(file, binary)
+            val binary = FileContent.isBinary(file)
+            val checkFileResult = checkFileContentWithDoubleCheck(file, binary, unreadable)
             val copyRightValidationResult = if (file.isRegularFile()) {
-                val sizeKB = file.fileSize().div(1000)
-                if (logger.isTraceEnabled) {
-                    logger.trace("Size $file: ${sizeKB}KB")
-                }
-                validateCopyright(file, binary)
+                validateCopyright(file, binary, unreadable)
             } else {
                 emptyList()
             }
             if (checkFileResult.second.isNotEmpty() || copyRightValidationResult.isNotEmpty()) {
                 fileContentProblems[checkFileResult.first] = checkFileResult.second + copyRightValidationResult
             }
+            // loud on purpose: a check that did not run makes a clean result mean "found nothing in
+            // what was read", and the report is the only place that difference can be seen
+            skipReason(file, binary)?.let { reason ->
+                logger.warn("Not fully scanned $file: $reason")
+                notScanned[file.relativizeAgainstSourceRoot()] = reason
+            }
             if ((index + 1) % 100 == 0) {
                 logger.info("Validated ${index + 1} files")
             }
         }
+
+        // a read that threw is a gap in the scan like any other, and the only place it can be seen
+        notScanned.putAll(unreadable)
 
         logger.info("Validated ${filesToCheck.size} files")
 
@@ -84,19 +91,101 @@ class WLSourceValidator(private val sourceRoot: Path, validationConfig: Path, va
                 skippedFiles.map {
                     sourceRoot.relativize(it)
                 },
+                notScanned,
             )
         logger.info("Validation finished successfully")
 
         return projectValidationResult
     }
 
+    /**
+     * What of this file was not looked at, or null when all of it was. Reported whatever the outcome:
+     * what did not run is a fact about the scan, and deciding when a gap is worth mentioning is how
+     * gaps stop being mentioned.
+     */
+    private fun skipReason(file: Path, binary: Boolean): String? = when {
+        binary && exceedsBinaryLimit(file) ->
+            "unscanned: size (${file.fileSize()} bytes, over the ${binaryLimit()} this JVM's heap allows)"
+
+        !binary && exceedsLightCheckLimit(file) ->
+            "partially scanned: double check skipped " +
+                "(size ${file.fileSize()} bytes, limit ${lightCheckLimit()})"
+
+        else -> null
+    }
+
+    /**
+     * Only the double check has a size limit among the text checks, because only it materialises the
+     * whole file as a String - and then a lowercased copy, and then a masked one. The others stream,
+     * which bounds their memory by what a single line, token or AST costs - not by the file's size,
+     * though not to any fixed ceiling either.
+     *
+     * Whichever is smaller, the constant or this path's share of the heap. 10 MB is the limit this
+     * check has always had and stays the limit anywhere with a normal heap; the share only matters on a
+     * small one, and it is not the binary path's share. Measured here, the three copies peak at 2.4 to
+     * 3.6 times the file's size - and the release targets 1.8, where a JDK 8 runtime has no compact
+     * strings and every one of those copies doubles, so about six times is the figure to hold against.
+     * Six, times the same fourfold margin the binary bound carries.
+     */
+    private fun exceedsLightCheckLimit(file: Path) = file.isRegularFile() &&
+        file.fileSize() >= lightCheckLimit()
+
+    private fun lightCheckLimit() = minOf(
+        LIGHT_CHECK_MAX_FILE_SIZE,
+        Runtime.getRuntime().maxMemory() / LIGHT_CHECK_HEAP_SHARE,
+    )
+
+    /**
+     * Binary content is read as its printable runs, and measured that costs roughly the file's own size
+     * in heap on top of a constant of churn: on this machine a fragmented 256 MB binary peaked at
+     * 262 MB and died outright in a 256 MB heap, while 128 MB peaked at 140 MB and survived one. So the
+     * limit is a share of the heap this JVM was actually given rather than a round number - a quarter,
+     * which is that measured 1:1 need with margin. It follows the environment, so the report says which
+     * limit applied.
+     */
+    private fun exceedsBinaryLimit(file: Path) = file.isRegularFile() && file.fileSize() > binaryLimit()
+
+    private fun binaryLimit() = Runtime.getRuntime().maxMemory() / BINARY_HEAP_SHARE
+
+    /**
+     * A file that could not be read is neither clean nor a finding, and saying nothing about it is the
+     * one outcome the skipped report exists to prevent.
+     *
+     * The accumulator travels down the call chain rather than living on the validator: an instance
+     * field would make two concurrent [validate] calls overwrite each other's records, and would grow
+     * without bound in a consumer that loops the public per-file methods - which is exactly the
+     * archive-entry shape of #21, on a validator inside a long-lived Gradle daemon.
+     */
+    private fun recordUnreadable(file: Path, error: Throwable, unreadable: MutableMap<Path, String>) {
+        logger.error("Can't read file=${file.relativizeAgainstSourceRoot()}", error)
+        unreadable[file.relativizeAgainstSourceRoot()] =
+            "unscanned: unreadable (${error.javaClass.simpleName}: ${error.message})"
+    }
+
+    private fun refuseBinary(file: Path): Pair<Path, List<ValidationProblem>> {
+        logger.warn("Not scanning binary $file: size ${file.fileSize()} needs more heap than ${binaryLimit()} allows")
+        return file.relativizeAgainstSourceRoot() to emptyList()
+    }
+
     @JvmOverloads
-    fun checkFileContentWithDoubleCheck(fileToCheck: Path, binary: Boolean = isBinary(fileToCheck)): Pair<Path, List<ValidationProblem>> {
-        val checkFileContent = checkFileContent(fileToCheck, binary)
+    fun checkFileContentWithDoubleCheck(
+        fileToCheck: Path,
+        binary: Boolean = FileContent.isBinary(fileToCheck),
+    ): Pair<Path, List<ValidationProblem>> = checkFileContentWithDoubleCheck(fileToCheck, binary, LinkedHashMap())
+
+    private fun checkFileContentWithDoubleCheck(
+        fileToCheck: Path,
+        binary: Boolean,
+        unreadable: MutableMap<Path, String>,
+    ): Pair<Path, List<ValidationProblem>> {
+        if (binary && exceedsBinaryLimit(fileToCheck)) {
+            return refuseBinary(fileToCheck)
+        }
+        val checkFileContent = checkFileContent(fileToCheck, binary, unreadable)
         return if (checkFileContent.second.isNotEmpty()) {
             checkFileContent
         } else {
-            val doubleCheckResult = checkFileContentLight(fileToCheck, binary)
+            val doubleCheckResult = checkFileContentLight(fileToCheck, binary, unreadable)
             if (doubleCheckResult.second.isNotEmpty()) {
                 logger.warn("Double check found problem in $fileToCheck")
             }
@@ -116,43 +205,74 @@ class WLSourceValidator(private val sourceRoot: Path, validationConfig: Path, va
         return testTokenAgainstRules?.let { return it.problemToken to it.suggestedReplacement }
     }
 
-    private fun validateCopyright(file: Path, binary: Boolean): List<ValidationProblem> = if (binary) {
-        file.inputStream().buffered().use { source ->
-            val runs = PrintableRunsInputStream(source)
-            copyrightValidator.validate(runs).map(runs::asBinaryProblem)
+    private fun validateCopyright(file: Path, binary: Boolean, unreadable: MutableMap<Path, String>): List<ValidationProblem> = try {
+        copyrightOf(file, binary)
+    } catch (ex: Throwable) {
+        recordUnreadable(file, ex, unreadable)
+        emptyList()
+    }
+
+    private fun copyrightOf(file: Path, binary: Boolean): List<ValidationProblem> = if (binary) {
+        if (exceedsBinaryLimit(file)) {
+            emptyList()
+        } else {
+            validateCopyrightOfBinary(file)
         }
     } else {
         file.inputStream().use { inputStream -> copyrightValidator.validate(inputStream) }
     }
 
-    private fun checkFileContentLight(filePath: Path, binary: Boolean): Pair<Path, List<ValidationProblem>> {
-        val fileSize = filePath.toFile().length()
-        if (fileSize >= MAX_FILE_SIZE) {
-            logger.info("skip $filePath due to size=$fileSize")
-            return filePath.relativizeAgainstSourceRoot() to emptyList()
+    private fun validateCopyrightOfBinary(file: Path): List<ValidationProblem> = file.inputStream().buffered().use { source ->
+        val runs = PrintableRunsInputStream(source)
+        copyrightValidator.validate(runs).map(runs::asBinaryProblem)
+    }
+
+    /**
+     * One wrapper for both branches: whatever the double check fails on, one unreadable file must not
+     * take the whole tree scan down with it, which is what the main checks already manage with their
+     * [Outcome].
+     */
+    private fun checkFileContentLight(
+        filePath: Path,
+        binary: Boolean,
+        unreadable: MutableMap<Path, String>,
+    ): Pair<Path, List<ValidationProblem>> = try {
+        filePath.relativizeAgainstSourceRoot() to scanContentLight(filePath, binary)
+    } catch (ex: Throwable) {
+        recordUnreadable(filePath, ex, unreadable)
+        filePath.relativizeAgainstSourceRoot() to emptyList()
+    }
+
+    private fun scanContentLight(filePath: Path, binary: Boolean): List<ValidationProblem> = when {
+        binary -> scanBinaryContentLight(filePath)
+
+        exceedsLightCheckLimit(filePath) -> {
+            logger.info("skip double check of $filePath due to size=${filePath.fileSize()}")
+            emptyList()
         }
-        if (binary) {
-            return filePath.relativizeAgainstSourceRoot() to checkBinaryContentLight(filePath)
-        }
+
+        else -> scanTextContentLight(filePath)
+    }
+
+    private fun scanTextContentLight(filePath: Path): List<ValidationProblem> {
         // maskExceptions, not a literal replace of exceptionItems: the items come from the config
         // verbatim, so one spelled with capitals never matched the lowercased text and the file was
         // reported here while the binary path, which masks case-insensitively, suppressed it.
         val text = maskExceptions(filePath.toFile().readText().lowercase())
-        val validationProblems = restrictedItems.mapNotNull { restrictedItem ->
+        return restrictedItems.mapNotNull { restrictedItem ->
             if (text.contains(restrictedItem)) {
                 ValidationProblem(-1, -1, -1, "", restrictedItem, restrictedItem, "UNKNOWN_REPLACEMENT")
             } else {
                 null
             }
         }
-        return filePath.relativizeAgainstSourceRoot() to validationProblems
     }
 
     /**
      * Same paranoid substring check as [checkFileContentLight], but over the printable runs of a binary
      * instead of its whole content decoded as a String.
      */
-    private fun checkBinaryContentLight(filePath: Path): List<ValidationProblem> = filePath.inputStream().buffered().use { source ->
+    private fun scanBinaryContentLight(filePath: Path): List<ValidationProblem> = filePath.inputStream().buffered().use { source ->
         val runs = PrintableRunsInputStream(source)
         runs.bufferedReader().useLines { lines ->
             lines.withIndex().firstNotNullOfOrNull { (index, line) ->
@@ -193,14 +313,22 @@ class WLSourceValidator(private val sourceRoot: Path, validationConfig: Path, va
     }
 
     @JvmOverloads
-    fun checkFileContent(file: Path, binary: Boolean = isBinary(file)): Pair<Path, List<ValidationProblem>> {
+    fun checkFileContent(file: Path, binary: Boolean = FileContent.isBinary(file)): Pair<Path, List<ValidationProblem>> =
+        checkFileContent(file, binary, LinkedHashMap())
+
+    private fun checkFileContent(file: Path, binary: Boolean, unreadable: MutableMap<Path, String>) = when {
+        binary && exceedsBinaryLimit(file) -> refuseBinary(file)
+        else -> scanFileContent(file, binary, unreadable)
+    }
+
+    private fun scanFileContent(file: Path, binary: Boolean, unreadable: MutableMap<Path, String>): Pair<Path, List<ValidationProblem>> {
         logger.debug("Start validation for file={}", file.relativizeAgainstSourceRoot())
         if (binary) {
             return when (val result = processBinaryFile(file)) {
                 is Ok -> file.relativizeAgainstSourceRoot() to result.value
 
                 is Er -> {
-                    logger.error("Can't process binary file=${file.relativizeAgainstSourceRoot()}", result.error)
+                    recordUnreadable(file, result.error, unreadable)
                     file.relativizeAgainstSourceRoot() to emptyList()
                 }
             }
@@ -225,7 +353,7 @@ class WLSourceValidator(private val sourceRoot: Path, validationConfig: Path, va
                     is Ok -> file.relativizeAgainstSourceRoot() to result.value
 
                     is Er -> {
-                        logger.error("Can't process file=${file.relativizeAgainstSourceRoot()}", result.error)
+                        recordUnreadable(file, result.error, unreadable)
                         file.relativizeAgainstSourceRoot() to emptyList()
                     }
                 }
@@ -371,31 +499,10 @@ class WLSourceValidator(private val sourceRoot: Path, validationConfig: Path, va
         private val logger = LoggerFactory.getLogger(WLSourceValidator::class.java)
         private val objectMapper = jacksonObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
 
-        private const val MAX_FILE_SIZE = 10000000
-        private const val BINARY_PROBE_SIZE = 8192
-        private const val ZERO_BYTE: Byte = 0
-
-        /**
-         * Content-based check, on purpose: the files this matters for (compiled executables) often have
-         * no extension at all.
-         */
-        internal fun isBinary(file: Path): Boolean = try {
-            file.inputStream().buffered().use { input ->
-                val probe = ByteArray(BINARY_PROBE_SIZE)
-                var probed = 0
-                while (probed < probe.size) {
-                    val read = input.read(probe, probed, probe.size - probed)
-                    if (read < 0) {
-                        break
-                    }
-                    probed += read
-                }
-                (0 until probed).any { probe[it] == ZERO_BYTE }
-            }
-        } catch (ex: Throwable) {
-            logger.warn("Can't probe file=$file for binary content", ex)
-            false
-        }
+        /** The limit the double check had before the size guard was moved around, kept as it was. */
+        internal const val LIGHT_CHECK_MAX_FILE_SIZE = 10000000L
+        private const val BINARY_HEAP_SHARE = 4
+        private const val LIGHT_CHECK_HEAP_SHARE = 24
 
         private fun validateConfigFiles(vararg paths: Path) {
             paths.forEach { p ->
@@ -458,6 +565,7 @@ data class ProjectValidationResult(
     val fileContentProblems: Map<Path, List<ValidationProblem>>,
     val suggestedReplacements: Map<String, String>,
     val skippedFilesAndFolders: List<Path>,
+    val notScanned: Map<Path, String>,
 ) {
     fun isNotEmpty(): Boolean = fileNameProblems.isNotEmpty() || fileContentProblems.isNotEmpty()
     fun isEmpty(): Boolean = !isNotEmpty()
@@ -583,4 +691,37 @@ internal class PrintableRunsInputStream(source: InputStream) : FilterInputStream
         private const val PRINTABLE_FIRST = 0x20
         private const val PRINTABLE_LAST = 0x7E
     }
+}
+
+/**
+ * Tells text and binary content apart, by content and not by file name: the files this matters for
+ * (compiled executables) often have no extension at all.
+ */
+internal object FileContent {
+    /** Content that is not text. It is validated - as its printable runs rather than as lines. */
+    fun isBinary(file: Path): Boolean = probe(file, BINARY_PROBE_SIZE).any { it == ZERO_BYTE }
+
+    // a probe must never abort a validation run: an unreadable file is a file we could not classify,
+    // not a reason to stop looking at the rest of the tree
+    @Suppress("TooGenericExceptionCaught")
+    private fun probe(file: Path, size: Int): ByteArray = try {
+        val probe = ByteArray(size)
+        var probed = 0
+        file.inputStream().buffered().use { input ->
+            var read = 0
+            while (probed < size && read >= 0) {
+                read = input.read(probe, probed, size - probed)
+                probed += maxOf(read, 0)
+            }
+        }
+        probe.copyOf(probed)
+    } catch (ex: Throwable) {
+        log.warn("Can't probe file=$file", ex)
+        ByteArray(0)
+    }
+
+    private val log = LoggerFactory.getLogger(FileContent::class.java)
+
+    private const val BINARY_PROBE_SIZE = 8192
+    private const val ZERO_BYTE: Byte = 0
 }
