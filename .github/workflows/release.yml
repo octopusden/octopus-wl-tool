@@ -1,6 +1,18 @@
 name: Maven Release
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      increment-version-level:
+        description: 'Which part of the version this release increments'
+        type: choice
+        default: patch
+        # only the three the base workflow can release: its version parser accepts vX.Y.Z and
+        # rejects the -N suffix every pre* level produces, so those would fail before publishing
+        options:
+          - patch
+          - minor
+          - major
 
 jobs:
   build:
@@ -8,4 +20,7 @@ jobs:
     with:
       java-version: '8'
       flow-type: public
+      # a released version is immutable, so the level is chosen at dispatch rather than
+      # defaulted in code: a change that breaks a consumer's build must not ship as a patch
+      increment-version-level: ${{ inputs.increment-version-level }}
     secrets: inherit
