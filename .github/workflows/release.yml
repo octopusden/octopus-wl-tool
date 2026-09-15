@@ -7,14 +7,12 @@ on:
         description: 'Which part of the version this release increments'
         type: choice
         default: patch
+        # only the three the base workflow can release: its version parser accepts vX.Y.Z and
+        # rejects the -N suffix every pre* level produces, so those would fail before publishing
         options:
           - patch
           - minor
           - major
-          - prerelease
-          - prepatch
-          - preminor
-          - premajor
 
 jobs:
   build:
