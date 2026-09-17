@@ -142,10 +142,17 @@
                     </execution>
                     <!-- kotlin-maven-plugin compiles src/test/kotlin through its own sourceDirs,
                          which never reach the Maven model - so the linters would not see the
-                         tests at all. -->
+                         tests at all.
+
+                         generate-sources, not generate-test-sources: the Sonar scanner runs in a
+                         separate Maven process that reconstructs the project model and stops before
+                         generate-test-sources, so a test root registered there never reaches analysis
+                         even though compilation succeeded. The main root above already sits at
+                         generate-sources for the same reason; nothing in this project needs the test
+                         root later than that. -->
                     <execution>
                         <id>add-test-kotlin-sources</id>
-                        <phase>generate-test-sources</phase>
+                        <phase>generate-sources</phase>
                         <goals>
                             <goal>add-test-source</goal>
                         </goals>
