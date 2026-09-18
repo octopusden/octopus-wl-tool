@@ -39,14 +39,9 @@
              the three detekt findings that did appear are fixed in this change. Nothing is exempted, so
              octopus.quality.maxViolations.* stay at their default of 0 and any new finding fails the build. -->
         <octopus.quality.failOnViolation>true</octopus.quality.failOnViolation>
-        <!-- Zero here, and a per-module figure in each module below. The detekt check runs PER MODULE,
-             so a repository-wide number is the larger of the two backlogs applied to both: with 13 here,
-             wl-tool - which has 11 - could take two more findings silently. The aggregator has no Kotlin
-             of its own, so its own budget is zero.
-             These were not visible before: this repository's detekt config sat at plugin level, so the
-             parent's execution inherited its baseline and reported a different number depending on
-             whether -P quality was active. That is fixed above; the numbers are the same either way now.
-             Lower them as findings are fixed, never raise them. -->
+        <!-- detekt budgets are per module, because the check is: one repository-wide number is the
+             larger backlog applied to both, and the smaller module can then take new findings silently.
+             The aggregator has no Kotlin of its own. Lower them as findings are fixed, never raise them. -->
         <octopus.quality.maxIssues.detekt>0</octopus.quality.maxIssues.detekt>
         <!-- Ratchet, not the inherited 0.10: LINE coverage is 86% in wl-tool and 92% in validation, and the
              check is per module, so the floor follows the lower one. This repository also keeps its own
