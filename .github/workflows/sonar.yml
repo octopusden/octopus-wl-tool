@@ -1,0 +1,15 @@
+name: Sonar
+
+on:
+  push:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  sonar:
+    uses: octopusden/octopus-base/.github/workflows/common-java-maven-sonar.yml@add-sonarcloud-workflows
+    with:
+      java-version: '8'
+      quality-gate-wait: true
+    secrets: inherit
