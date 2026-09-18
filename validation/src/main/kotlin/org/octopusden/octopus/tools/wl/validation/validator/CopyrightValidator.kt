@@ -196,6 +196,10 @@ class CopyrightValidator @JvmOverloads constructor(
     companion object {
         private val log = LoggerFactory.getLogger(CopyrightValidator::class.java)
         private val FLAG_PREFIX = Regex("^\\(\\?[a-zA-Z]+\\)")
+        private const val IDLE_THREAD_TIMEOUT_SEC: Long = 30
+        private const val STRING_VALIDATION_TIMEOUT_SEC_DEFAULT: Long = 30
+        private const val THREAD_COUNT_DEFAULT = 20
+        private const val VALIDATION_TOKEN_LENGTH = 80
 
         private fun narrowToMatch(regex: Regex): Regex {
             val flags = FLAG_PREFIX.find(regex.pattern)?.value ?: ""
@@ -214,10 +218,5 @@ class CopyrightValidator @JvmOverloads constructor(
                 regex
             }
         }
-
-        private const val IDLE_THREAD_TIMEOUT_SEC: Long = 30
-        private const val STRING_VALIDATION_TIMEOUT_SEC_DEFAULT: Long = 30
-        private const val THREAD_COUNT_DEFAULT = 20
-        private const val VALIDATION_TOKEN_LENGTH = 80
     }
 }

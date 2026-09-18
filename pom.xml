@@ -4,7 +4,7 @@
     <parent>
         <groupId>org.octopusden.octopus</groupId>
         <artifactId>octopus-parent</artifactId>
-        <version>2.0.11</version>
+        <version>2.1.0</version>
     </parent>
 
     <groupId>org.octopusden.octopus.tools.wl</groupId>
@@ -34,6 +34,11 @@
     </modules>
 
     <properties>
+        <!-- Strict from the start: with octopus-parent 2.1.0 this repository reports zero Checkstyle, PMD
+             and ktlint findings, SpotBugs is skipped on its Kotlin modules, coverage clears the floor, and
+             the three detekt findings that did appear are fixed in this change. Nothing is exempted, so
+             octopus.quality.maxViolations.* stay at their default of 0 and any new finding fails the build. -->
+        <octopus.quality.failOnViolation>true</octopus.quality.failOnViolation>
         <kotlin.version>1.8.22</kotlin.version>
         <jackson.version>2.18.9</jackson.version>
     </properties>
