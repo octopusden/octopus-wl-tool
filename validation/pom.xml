@@ -11,6 +11,14 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>validation</artifactId>
+
+    <properties>
+        <!-- This module's own detekt backlog under the org ruleset, frozen. The check runs PER MODULE, so
+             the budget has to be per module too: one repository-wide number is the larger backlog applied
+             to both, and the smaller module can then take new findings silently.
+             Lower it as findings are fixed, never raise it. -->
+        <octopus.quality.maxIssues.detekt>13</octopus.quality.maxIssues.detekt>
+    </properties>
     <name>Octopus WL Validation</name>
     <description>White labeling validators and file filters shared by the wl-tool and its Gradle tasks.</description>
 

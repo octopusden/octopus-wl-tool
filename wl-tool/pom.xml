@@ -9,6 +9,14 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>wl-tool</artifactId>
+
+    <properties>
+        <!-- This module's own detekt backlog under the org ruleset, frozen. The check runs PER MODULE, so
+             the budget has to be per module too: one repository-wide number is the larger backlog applied
+             to both, and the smaller module can then take new findings silently.
+             Lower it as findings are fixed, never raise it. -->
+        <octopus.quality.maxIssues.detekt>11</octopus.quality.maxIssues.detekt>
+    </properties>
     <name>Octopus WL Tool</name>
     <description>Command line white labeling validator: applies the wl-config rules to a project or distribution and generates the findings report.</description>
     <build>
