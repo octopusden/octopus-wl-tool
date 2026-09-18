@@ -4,7 +4,7 @@
     <parent>
         <groupId>org.octopusden.octopus</groupId>
         <artifactId>octopus-parent</artifactId>
-        <version>2.1.0</version>
+        <version>2.2.0</version>
     </parent>
 
     <groupId>org.octopusden.octopus.tools.wl</groupId>
@@ -39,6 +39,12 @@
              the three detekt findings that did appear are fixed in this change. Nothing is exempted, so
              octopus.quality.maxViolations.* stay at their default of 0 and any new finding fails the build. -->
         <octopus.quality.failOnViolation>true</octopus.quality.failOnViolation>
+        <!-- Thirteen detekt findings under the ORG ruleset, frozen so no new ones get in. They were not
+             visible before: this repository's own detekt config sat at plugin level, so the parent's
+             execution inherited its baseline and reported a different number depending on whether
+             -P quality was active. That is fixed above; this number is now the same either way.
+             Lower it as the findings are fixed, never raise it. -->
+        <octopus.quality.maxIssues.detekt>13</octopus.quality.maxIssues.detekt>
         <!-- Ratchet, not the inherited 0.10: LINE coverage is 86% in wl-tool and 92% in validation, and the
              check is per module, so the floor follows the lower one. This repository also keeps its own
              JaCoCo rule (LINE 0.70 / BRANCH 0.60), which stays the looser of the two. -->
@@ -336,19 +342,24 @@
                                 <goals>
                                     <goal>check</goal>
                                 </goals>
+                                <!-- On the execution, not the plugin: plugin-level configuration applies to
+                                     EVERY execution of that plugin, including octopus-parent's own, which
+                                     then inherited this baseline and reported a different number depending
+                                     on whether -P quality was active. This run keeps its local config; the
+                                     parent's runs with the org ruleset, always. -->
+                                <configuration>
+                                    <buildUponDefaultConfig>true</buildUponDefaultConfig>
+                                    <config>${maven.multiModuleProjectDirectory}/detekt.yml</config>
+                                    <!-- Baseline holds the violations that existed when detekt was
+                                         introduced; new code must not add entries to it. Regenerate
+                                         with: mvn -P quality generate-test-sources detekt:create-baseline -->
+                                    <baseline>${project.basedir}/detekt-baseline.xml</baseline>
+                                    <!-- src/test/resources holds .kt files that are test input for the
+                                         white labeling validators, not code of this project. -->
+                                    <excludes>**/resources/**</excludes>
+                                </configuration>
                             </execution>
                         </executions>
-                        <configuration>
-                            <buildUponDefaultConfig>true</buildUponDefaultConfig>
-                            <config>${maven.multiModuleProjectDirectory}/detekt.yml</config>
-                            <!-- Baseline holds the violations that existed when detekt was
-                                 introduced; new code must not add entries to it. Regenerate
-                                 with: mvn -P quality generate-test-sources detekt:create-baseline -->
-                            <baseline>${project.basedir}/detekt-baseline.xml</baseline>
-                            <!-- src/test/resources holds .kt files that are test input for the
-                                 white labeling validators, not code of this project. -->
-                            <excludes>**/resources/**</excludes>
-                        </configuration>
                     </plugin>
                 </plugins>
             </build>
