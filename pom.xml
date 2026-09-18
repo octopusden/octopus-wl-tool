@@ -39,6 +39,10 @@
              the three detekt findings that did appear are fixed in this change. Nothing is exempted, so
              octopus.quality.maxViolations.* stay at their default of 0 and any new finding fails the build. -->
         <octopus.quality.failOnViolation>true</octopus.quality.failOnViolation>
+        <!-- Ratchet, not the inherited 0.10: LINE coverage is 86% in wl-tool and 92% in validation, and the
+             check is per module, so the floor follows the lower one. This repository also keeps its own
+             JaCoCo rule (LINE 0.70 / BRANCH 0.60), which stays the looser of the two. -->
+        <octopus.coverage.minimumLine>0.85</octopus.coverage.minimumLine>
         <kotlin.version>1.8.22</kotlin.version>
         <jackson.version>2.18.9</jackson.version>
     </properties>
