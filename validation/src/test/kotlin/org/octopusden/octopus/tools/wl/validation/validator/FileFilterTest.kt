@@ -9,8 +9,10 @@ import org.junit.jupiter.api.TestInstance
 import org.octopusden.octopus.util.FileContentFilterConfig
 import org.octopusden.octopus.util.FileFilter
 import org.octopusden.octopus.util.FileFilterConfig
+import java.io.ByteArrayInputStream
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.util.Locale
 import java.util.zip.ZipFile
 import kotlin.io.path.inputStream
 import kotlin.io.path.toPath
@@ -18,6 +20,24 @@ import kotlin.io.path.writeText
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class FileFilterTest {
+
+    @Test
+    fun `a zip is recognised under a locale whose digits are not ascii`() {
+        // isZipFile builds the signature with String.format("%02x "), which formats digits in the DEFAULT
+        // locale. Under a locale with non-ASCII digits the signature never matches the ASCII constants it
+        // is compared against, so a real zip is classified as a plain file and scanned as text.
+        val zipHeader = byteArrayOf(0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x00, 0x00)
+        val original = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.forLanguageTag("ar-SA-u-nu-arab"))
+            Assertions.assertTrue(
+                FileFilter.isZipFile(ByteArrayInputStream(zipHeader)),
+                "a zip must be recognised regardless of the default locale",
+            )
+        } finally {
+            Locale.setDefault(original)
+        }
+    }
 
     @Test
     fun directoryFilter_emptyFilters() {
