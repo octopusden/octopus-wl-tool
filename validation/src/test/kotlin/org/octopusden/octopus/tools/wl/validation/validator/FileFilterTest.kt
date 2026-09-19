@@ -23,9 +23,11 @@ class FileFilterTest {
 
     @Test
     fun `a zip is recognised under a locale whose digits are not ascii`() {
-        // isZipFile builds the signature with String.format("%02x "), which formats digits in the DEFAULT
-        // locale. Under a locale with non-ASCII digits the signature never matches the ASCII constants it
-        // is compared against, so a real zip is classified as a plain file and scanned as text.
+        // This was written expecting a failure and did not get one: %x is a conversion Java's Formatter
+        // does NOT localise, so the signature stays ASCII whatever the default locale is. It earns its
+        // place as a guard rather than a reproduction - the day someone moves this to a conversion that IS
+        // localised, a zip would silently be scanned as text, and a linter pointing at that line makes the
+        // move tempting.
         val zipHeader = byteArrayOf(0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x00, 0x00)
         val original = Locale.getDefault()
         try {
