@@ -35,7 +35,11 @@ class FileFilter private constructor() {
                 val signature = StringBuilder()
                 var i = 0
                 while (i < 8 && s.available() > 0) {
-                    signature.append(String.format("%02x ", s.read()))
+                    // Locale.ROOT is explicit rather than defensive: %x is one of the conversions Java's
+                    // Formatter does NOT localise, so this never depended on the default locale - measured,
+                    // %02x stays "50" under ar-SA-u-nu-arab while %d becomes "٨٠". Saying so in code beats
+                    // suppressing the warning, and FileFilterTest pins the behaviour either way.
+                    signature.append(String.format(java.util.Locale.ROOT, "%02x ", s.read()))
                     i++
                 }
                 val hexSignature = signature.toString().trim { it <= ' ' }.uppercase()

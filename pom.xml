@@ -4,7 +4,7 @@
     <parent>
         <groupId>org.octopusden.octopus</groupId>
         <artifactId>octopus-parent</artifactId>
-        <version>2.0.11</version>
+        <version>2.2.1</version>
     </parent>
 
     <groupId>org.octopusden.octopus.tools.wl</groupId>
@@ -34,6 +34,22 @@
     </modules>
 
     <properties>
+        <!-- Strict from the start: with octopus-parent 2.2.0 this repository reports zero Checkstyle, PMD
+             and ktlint findings, SpotBugs is skipped on its Kotlin modules, and coverage clears the floor.
+             Checkstyle, PMD and SpotBugs are exempted from nothing - octopus.quality.maxViolations.* stay
+             at their default of 0, so any new finding fails the build. detekt is the exception, below. -->
+        <octopus.quality.failOnViolation>true</octopus.quality.failOnViolation>
+        <!-- detekt has a frozen backlog, and the budgets are per module rather than repository-wide: one
+             number means the larger backlog applies to both, and the smaller module can then take new
+             findings silently. The budgets are 13 in validation/pom.xml and 11 in wl-tool/pom.xml - 24
+             across the repository, each enforced against its own module. The aggregator has no Kotlin of
+             its own, so 0 here is a real gate rather than a placeholder. Lower them as findings are fixed,
+             never raise them. -->
+        <octopus.quality.maxIssues.detekt>0</octopus.quality.maxIssues.detekt>
+        <!-- Ratchet, not the inherited 0.10: LINE coverage is 86% in wl-tool and 92% in validation, and the
+             check is per module, so the floor follows the lower one. This repository also keeps its own
+             JaCoCo rule (LINE 0.70 / BRANCH 0.60), which stays the looser of the two. -->
+        <octopus.coverage.minimumLine>0.85</octopus.coverage.minimumLine>
         <kotlin.version>1.8.22</kotlin.version>
         <jackson.version>2.18.9</jackson.version>
     </properties>
@@ -334,19 +350,24 @@
                                 <goals>
                                     <goal>check</goal>
                                 </goals>
+                                <!-- On the execution, not the plugin: plugin-level configuration applies to
+                                     EVERY execution of that plugin, including octopus-parent's own, which
+                                     then inherited this baseline and reported a different number depending
+                                     on whether -P quality was active. This run keeps its local config; the
+                                     parent's runs with the org ruleset, always. -->
+                                <configuration>
+                                    <buildUponDefaultConfig>true</buildUponDefaultConfig>
+                                    <config>${maven.multiModuleProjectDirectory}/detekt.yml</config>
+                                    <!-- Baseline holds the violations that existed when detekt was
+                                         introduced; new code must not add entries to it. Regenerate
+                                         with: mvn -P quality generate-test-sources detekt:create-baseline -->
+                                    <baseline>${project.basedir}/detekt-baseline.xml</baseline>
+                                    <!-- src/test/resources holds .kt files that are test input for the
+                                         white labeling validators, not code of this project. -->
+                                    <excludes>**/resources/**</excludes>
+                                </configuration>
                             </execution>
                         </executions>
-                        <configuration>
-                            <buildUponDefaultConfig>true</buildUponDefaultConfig>
-                            <config>${maven.multiModuleProjectDirectory}/detekt.yml</config>
-                            <!-- Baseline holds the violations that existed when detekt was
-                                 introduced; new code must not add entries to it. Regenerate
-                                 with: mvn -P quality generate-test-sources detekt:create-baseline -->
-                            <baseline>${project.basedir}/detekt-baseline.xml</baseline>
-                            <!-- src/test/resources holds .kt files that are test input for the
-                                 white labeling validators, not code of this project. -->
-                            <excludes>**/resources/**</excludes>
-                        </configuration>
                     </plugin>
                 </plugins>
             </build>

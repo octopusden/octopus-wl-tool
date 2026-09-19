@@ -11,6 +11,10 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>validation</artifactId>
+
+    <properties>
+        <octopus.quality.maxIssues.detekt>13</octopus.quality.maxIssues.detekt>
+    </properties>
     <name>Octopus WL Validation</name>
     <description>White labeling validators and file filters shared by the wl-tool and its Gradle tasks.</description>
 
