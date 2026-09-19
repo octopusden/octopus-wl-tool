@@ -34,14 +34,17 @@
     </modules>
 
     <properties>
-        <!-- Strict from the start: with octopus-parent 2.1.0 this repository reports zero Checkstyle, PMD
-             and ktlint findings, SpotBugs is skipped on its Kotlin modules, coverage clears the floor, and
-             the three detekt findings that did appear are fixed in this change. Nothing is exempted, so
-             octopus.quality.maxViolations.* stay at their default of 0 and any new finding fails the build. -->
+        <!-- Strict from the start: with octopus-parent 2.2.0 this repository reports zero Checkstyle, PMD
+             and ktlint findings, SpotBugs is skipped on its Kotlin modules, and coverage clears the floor.
+             Checkstyle, PMD and SpotBugs are exempted from nothing - octopus.quality.maxViolations.* stay
+             at their default of 0, so any new finding fails the build. detekt is the exception, below. -->
         <octopus.quality.failOnViolation>true</octopus.quality.failOnViolation>
-        <!-- detekt budgets are per module, because the check is: one repository-wide number is the
-             larger backlog applied to both, and the smaller module can then take new findings silently.
-             The aggregator has no Kotlin of its own. Lower them as findings are fixed, never raise them. -->
+        <!-- detekt has a frozen backlog, and the budgets are per module rather than repository-wide: one
+             number means the larger backlog applies to both, and the smaller module can then take new
+             findings silently. The budgets are 13 in validation/pom.xml and 11 in wl-tool/pom.xml - 24
+             across the repository, each enforced against its own module. The aggregator has no Kotlin of
+             its own, so 0 here is a real gate rather than a placeholder. Lower them as findings are fixed,
+             never raise them. -->
         <octopus.quality.maxIssues.detekt>0</octopus.quality.maxIssues.detekt>
         <!-- Ratchet, not the inherited 0.10: LINE coverage is 86% in wl-tool and 92% in validation, and the
              check is per module, so the floor follows the lower one. This repository also keeps its own
