@@ -7,6 +7,9 @@ on:
     types: [opened, synchronize, reopened]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   sonar:
     uses: octopusden/octopus-base/.github/workflows/common-java-maven-sonar.yml@add-sonarcloud-workflows
