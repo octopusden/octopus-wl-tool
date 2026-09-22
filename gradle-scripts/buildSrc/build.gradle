@@ -27,7 +27,10 @@ dependencies {
 // resolved graph rather than declared as a constraint because resolutionStrategy.force - which
 // is exactly how the downgrade would be written - overrides a version rejection and resolves
 // green.
-def jacksonFloor = '2.18.8'
+// 2.18.9, not the 2.18.8 #16's prose suggests: its own table has CVE-2026-54515 against
+// jackson-databind fixed only in 2.18.9. One floor for the whole group, because jackson
+// releases core and databind in lockstep and the graph is on 2.18.9 already.
+def jacksonFloor = '2.18.9'
 def asNumber = { String v ->
     def m = (v =~ /^(\d+)\.(\d+)\.(\d+)/)
     m ? m[0][1].toInteger() * 1_000_000 + m[0][2].toInteger() * 1_000 + m[0][3].toInteger() : null
