@@ -37,27 +37,33 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+      # Two JDKs on purpose: the Maven build targets 8, the same as build.yml, while the Gradle
+      # side runs 17 to match what the TeamCity agents set as JAVA_HOME for this same build.
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          # Gradle 6.8.1's bundled Groovy/ASM can't parse newer bytecode; JDK 8 is what
-          # build.yml already uses for this repo's Maven build, and what TeamCity's own
-          # agent uses for this same buildSrc compile.
-          java-version: '8'
+          java-version: |
+            17
+            8
       - name: Install wl-tool and validation to the local Maven repo
+        env:
+          JAVA_HOME: ${{ env.JAVA_HOME_8_X64 }}
         run: mvn -q install
       - name: Build buildSrc against this branch's wl-tool
         working-directory: gradle-scripts
+        env:
+          JAVA_HOME: ${{ env.JAVA_HOME_17_X64 }}
         run: |
           set -euo pipefail
           # help:evaluate's default (old) plugin version drops -DforceStdout's output under -q;
           # 3.4.0 is pinned because it doesn't.
           VERSION="$(mvn -q -f ../wl-tool/pom.xml org.apache.maven.plugins:maven-help-plugin:3.4.0:evaluate -Dexpression=project.version -DforceStdout)"
-          # -p treats buildSrc as its own project root. Building it through the parent
-          # (:buildSrc:build) still configures gradle-scripts' own build.gradle - a different
-          # Kotlin Gradle Plugin version - which pulls in a jackson-core jar Gradle 6.8.1's
-          # bundled ASM can't parse, failing every build regardless of buildSrc's own state.
-          ./gradlew -p buildSrc build --no-daemon -P"octopus-wl-tool.version=${VERSION}"
+          # The full root build (not just :buildSrc:build) so this also covers gradle-scripts'
+          # own wlValidator task - a signature mismatch scoped to buildSrc alone isn't the only
+          # way this has broken; a wl-tool version bump once broke the root build's own
+          # dependency resolution (jackson pulled in bytecode Gradle 6.8.1 can't parse) in a way
+          # -p buildSrc wouldn't have caught either.
+          ./gradlew build --no-daemon -P"octopus-wl-tool.version=${VERSION}"
 
   gate-merge:
     name: gate/merge

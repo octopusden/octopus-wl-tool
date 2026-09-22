@@ -18,8 +18,51 @@ dependencies {
     api("org.octopusden.octopus.tools.wl:validation:${project['octopus-wl-tool.version']}")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.2")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.8.2")
+
 }
+
+// WLSourceValidator parses repository JSON and XML with jackson at task execution time, so this
+// is a live parser, not a build-time transitive: pinning it below 2.18.8 reopens the advisories
+// #16 closed, and that was very nearly shipped as the workaround for #30. Checked against the
+// resolved graph rather than declared as a constraint because resolutionStrategy.force - which
+// is exactly how the downgrade would be written - overrides a version rejection and resolves
+// green.
+// 2.18.9, not the 2.18.8 #16's prose suggests: its own table has CVE-2026-54515 against
+// jackson-databind fixed only in 2.18.9. One floor for the whole group, because jackson
+// releases core and databind in lockstep and the graph is on 2.18.9 already.
+def jacksonFloor = '2.18.9'
+def asNumber = { String v ->
+    def m = (v =~ /^(\d+)\.(\d+)\.(\d+)/)
+    m ? m[0][1].toInteger() * 1_000_000 + m[0][2].toInteger() * 1_000 + m[0][3].toInteger() : null
+}
+def checkJacksonFloor = tasks.register('checkJacksonFloor') {
+    description = 'Fails if jackson resolves below the version that closed #16.'
+    doLast {
+        def downgraded = configurations.runtimeClasspath.resolvedConfiguration.resolvedArtifacts
+                .collect { it.moduleVersion.id }
+                .findAll { it.group == 'com.fasterxml.jackson.core' }
+                .findAll { id ->
+                    def found = asNumber(id.version)
+                    found != null && found < asNumber(jacksonFloor)
+                }
+        if (downgraded) {
+            throw new GradleException(
+                    "jackson below $jacksonFloor reopens the advisories closed in #16: " +
+                            downgraded.collect { "$it.group:$it.name:$it.version" }.join(', '))
+        }
+    }
+}
+tasks.named('check') { dependsOn checkJacksonFloor }
 
 test {
     useJUnitPlatform()
+    // ProjectBuilder reflects into the JDK, which JDK 16+ strong encapsulation refuses by
+    // default - without these the task fails with IllegalAccessException rather than a test
+    // failure. Guarded because JDK 8 rejects the flag outright and won't start the JVM at all:
+    // the agents run 17, but this project is shared tooling for ~70 WL Validation builds and
+    // their JAVA_HOME is one inherited TeamCity parameter away from changing.
+    if (JavaVersion.current().isJava9Compatible()) {
+        jvmArgs '--add-opens=java.base/java.lang=ALL-UNNAMED',
+                '--add-opens=java.base/java.util=ALL-UNNAMED'
+    }
 }
