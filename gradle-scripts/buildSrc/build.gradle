@@ -8,4 +8,10 @@ dependencies {
     api gradleApi()
     api("org.octopusden.octopus.tools.wl:wl-tool:${project['octopus-wl-tool.version']}")
     api("org.octopusden.octopus.tools.wl:validation:${project['octopus-wl-tool.version']}")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.2")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.8.2")
+}
+
+test {
+    useJUnitPlatform()
 }
