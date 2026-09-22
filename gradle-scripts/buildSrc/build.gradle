@@ -22,4 +22,13 @@ dependencies {
 
 test {
     useJUnitPlatform()
+    // ProjectBuilder reflects into the JDK, which JDK 16+ strong encapsulation refuses by
+    // default - without these the task fails with IllegalAccessException rather than a test
+    // failure. Guarded because JDK 8 rejects the flag outright and won't start the JVM at all:
+    // the agents run 17, but this project is shared tooling for ~70 WL Validation builds and
+    // their JAVA_HOME is one inherited TeamCity parameter away from changing.
+    if (JavaVersion.current().isJava9Compatible()) {
+        jvmArgs '--add-opens=java.base/java.lang=ALL-UNNAMED',
+                '--add-opens=java.base/java.util=ALL-UNNAMED'
+    }
 }
