@@ -28,9 +28,13 @@ mvn -P quality generate-test-sources ktlint:format   # fix what ktlint can fix i
 ```
 
 `ktlint` reads `.editorconfig` (`intellij_idea` code style, `max_line_length = 140`), `detekt`
-reads `detekt.yml` on top of its own defaults, and `jacoco` fails the build under **70%** line
-coverage per module — the floor `gradle-quality-plugin` uses for the Gradle repositories. The
-rules follow `octopus-base/docs/Octopus Kotlin Style Guide.md`.
+reads `detekt.yml` on top of its own defaults, and `jacoco` fails the build under **85%** line
+coverage per module. That floor is a ratchet set just under the measured figures — 86% in
+`wl-tool`, 92% in `validation` — and is raised as coverage improves, never lowered. This
+repository also keeps its own JaCoCo rule at LINE 70% / BRANCH 60%, the floor
+`gradle-quality-plugin` uses for the Gradle repositories; it is the looser of the two, so the
+85% one is what you will hit first. The rules follow
+`octopus-base/docs/Octopus Kotlin Style Guide.md`.
 
 Violations that existed when detekt was introduced are in `*/detekt-baseline.xml`; new code must
 not add entries there. Regenerate with

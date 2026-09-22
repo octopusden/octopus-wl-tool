@@ -698,6 +698,11 @@ internal class PrintableRunsInputStream(source: InputStream) : FilterInputStream
  * (compiled executables) often have no extension at all.
  */
 internal object FileContent {
+    private val log = LoggerFactory.getLogger(FileContent::class.java)
+
+    private const val BINARY_PROBE_SIZE = 8192
+    private const val ZERO_BYTE: Byte = 0
+
     /** Content that is not text. It is validated - as its printable runs rather than as lines. */
     fun isBinary(file: Path): Boolean = probe(file, BINARY_PROBE_SIZE).any { it == ZERO_BYTE }
 
@@ -719,9 +724,4 @@ internal object FileContent {
         log.warn("Can't probe file=$file", ex)
         ByteArray(0)
     }
-
-    private val log = LoggerFactory.getLogger(FileContent::class.java)
-
-    private const val BINARY_PROBE_SIZE = 8192
-    private const val ZERO_BYTE: Byte = 0
 }
