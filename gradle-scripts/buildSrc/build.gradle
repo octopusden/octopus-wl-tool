@@ -4,6 +4,14 @@ plugins {
 
 apply plugin: 'kotlin'
 
+// TeamCity agents inject the Artifactory mirror via an agent-level init script; GitHub Actions
+// runners have none, so CI needs these declared explicitly to resolve wl-tool/validation and
+// their public transitive dependencies.
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
 dependencies {
     api gradleApi()
     api("org.octopusden.octopus.tools.wl:wl-tool:${project['octopus-wl-tool.version']}")

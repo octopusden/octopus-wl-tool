@@ -25,6 +25,40 @@ jobs:
       security-events: write
     uses: ./.github/workflows/security-reports.yml
 
+  gradle-scripts:
+    name: buildSrc (gradle-scripts)
+    # gradle-scripts/buildSrc is a separate Gradle project, outside the Maven reactor the
+    # other jobs build, that resolves wl-tool/validation by version rather than as reactor
+    # modules. Nothing else compiles it, so a signature change here can merge green and only
+    # break downstream consumers' WL Validation builds once they pick up the new version -
+    # which is exactly what happened in #22.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          # Gradle 6.8.1's bundled Groovy/ASM can't parse newer bytecode; JDK 8 is what
+          # build.yml already uses for this repo's Maven build, and what TeamCity's own
+          # agent uses for this same buildSrc compile.
+          java-version: '8'
+      - name: Install wl-tool and validation to the local Maven repo
+        run: mvn -q install
+      - name: Build buildSrc against this branch's wl-tool
+        working-directory: gradle-scripts
+        run: |
+          set -euo pipefail
+          # help:evaluate's default (old) plugin version drops -DforceStdout's output under -q;
+          # 3.4.0 is pinned because it doesn't.
+          VERSION="$(mvn -q -f ../wl-tool/pom.xml org.apache.maven.plugins:maven-help-plugin:3.4.0:evaluate -Dexpression=project.version -DforceStdout)"
+          # -p treats buildSrc as its own project root. Building it through the parent
+          # (:buildSrc:build) still configures gradle-scripts' own build.gradle - a different
+          # Kotlin Gradle Plugin version - which pulls in a jackson-core jar Gradle 6.8.1's
+          # bundled ASM can't parse, failing every build regardless of buildSrc's own state.
+          ./gradlew -p buildSrc build --no-daemon -P"octopus-wl-tool.version=${VERSION}"
+
   gate-merge:
     name: gate/merge
     if: ${{ always() }}
@@ -32,6 +66,7 @@ jobs:
       - build
       - quality
       - security
+      - gradle-scripts
     runs-on: ubuntu-latest
     steps:
       - name: Validate gate results
