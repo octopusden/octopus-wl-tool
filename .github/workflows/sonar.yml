@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   sonar:
-    uses: octopusden/octopus-base/.github/workflows/common-java-maven-sonar.yml@v3.4.0
+    uses: octopusden/octopus-base/.github/workflows/common-java-maven-sonar.yml@v3.4.1
     with:
       java-version: '8'
       quality-gate-wait: true
