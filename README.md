@@ -60,7 +60,7 @@ JVM than the JDK 8 the release runs on, so CI activates the profile in its own J
 
 ## CI
 
-All three call reusable workflows from `octopus-base`, pinned to `v3.4.1`.
+All three call reusable workflows from `octopus-base`, pinned to a release tag (see `uses:` in `.github/workflows/`).
 
 `Merge Gate` runs on every pull request and aggregates the three gates into one check,
 `gate/merge` — the only check branch protection needs to require:
